@@ -21,7 +21,7 @@ Document the project (2–5 pages) describing the program structure, problem con
 
 3. Mutations
 
-4. Breeding
+4. Crossovers
 
 
 ## Results
