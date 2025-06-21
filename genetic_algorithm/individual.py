@@ -38,7 +38,7 @@ class Schedule:
         """Returns the fitness score of the schedule."""
         return self.fitness_score
 
-    def set_fitness_score(self, score: int):
+    def set_fitness_score(self, score: int) -> None:
         """Sets the fitness score of the schedule."""
         self.fitness_score = score
 
@@ -50,15 +50,79 @@ class Schedule:
         """
         pass
 
-    def fitness(self):
+    def fitness(self, all_class: list[Subject]) -> None:
         """
-        Calculates the fitness score of the schedule.
+        Calculates the fitness score of a schedule.
         The fitness score is a measure of how well the schedule meets the requirements.
-        It can be based on various factors such as the number of classes scheduled, 
-        conflicts, and other criteria.
-        
+        There will be two main criteria for the fitness evaluation and the final score will be their multiplication:
+        First:
+            If a class is scheduled at a time slot that is already occupied, it will not get a point.
+            if at the end of a class there is no time for the next class, it will not get a point.
+            if before a class there is no time for the previous class, it will not get a point.
+            The max score of a class is 3 points, the minimum is 0 points.
+            The score of the first part is the sum of the scores of all classes divided 
+            by the count of classes * by max point (the class can get).
+
+        Second:
+            We record for each classroom and for each day the time elapsed from 7:00 a.m. to the beginning of the first
+            lectures. If we have n classrooms and m working days, there will be n m of these values
+            these values ​​with pi, where i takes integer values ​​from 1 to n m
+            time elapsed from the end of the last lecture to 19:00 for each day and for each classroom. This one
+            we mark times with ki. We form the optimality criterion in the following way:
+            The sum of pi * ki for all i from 1 to n*m is the second part of the fitness score.
+
+        The final fitness score is the product of the two parts.
+        :param all_class: The list of classes.
         """
-        pass
+
+        first_part_score = 0
+        second_part_score = 0
+        max_point = 3
+
+        for k, v in self.mapping.items():
+            curr = 0
+            # if there is no class right before
+            duration = all_class[k].get_duration()
+            if v == 0:
+                curr+=1
+            else:
+                if self.class_list[v-1] is None:
+                    curr+=1
+            # if there is no class right after
+            if v + duration == len(self.class_list):
+                curr+=1
+            elif self.class_list[v + duration] is None:
+                curr+=1
+            # if there is no class in the same time slot
+            temp_point = 1
+            for i in range(v, v + duration):
+                if len(self.class_list[i]) > 1:
+                    temp_point = 0
+                    break
+
+            first_part_score += curr + temp_point
+
+        first_part_score = first_part_score / (len(self.mapping) * max_point)
+
+
+        for i in range(0, len(self.class_list),12*4):
+            sufix=0
+            prefix=0
+            # Find the first non-empty slot in the first part of the day, start of the working day
+            for j in range(12*4):
+                if self.class_list[i+j]:
+                    prefix = j
+                    break
+            # Find the last non-empty slot in the first part of the day, end of the working day
+            for j in range(12*4-1, -1, -1):
+                if self.class_list[i+j]:
+                    sufix = j
+                    break
+            second_part_score += prefix *sufix*15*15
+                
+        fitness_score = first_part_score * second_part_score
+        self.set_fitness_score(fitness_score)
+        return
 
     
 
