@@ -1,8 +1,9 @@
 from reading_data import load_data
+from genetic_algorithm.generation import life_cycle
+from const import MAX_GENERATIONS, MUTATION_CHANCE, POPULATION_SIZE, KEEP_PERCENT, FILE_PATH
 
 def main():
-    file_path = 'data_timetable.txt'
-    rooms, events = load_data(file_path)
+    rooms, events = load_data(FILE_PATH)
 
     print("Rooms:")
     for room_id, room_name in rooms.items():
@@ -10,7 +11,11 @@ def main():
 
     print("\nEvents:")
     for event in events:
-        print(f"  {event[0]}: {event[1]} ")
+        print(event)
+
+    life_cycle(max_generations=MAX_GENERATIONS, best_fitness=10000, stopping_criteria=0.1, classes=events, 
+               population_size=POPULATION_SIZE, selection_parameter=KEEP_PERCENT, mutation_chance=MUTATION_CHANCE,rooms=rooms)
+
 
 if __name__ == "__main__":
     main()

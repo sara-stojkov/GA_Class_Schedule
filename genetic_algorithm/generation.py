@@ -1,55 +1,87 @@
 # Here will be the code for generating the initial generation
-from math import abs
-from individual import Schedule, cross_over
 import random
+from statistics import mean, median
+from genetic_algorithm.individual import *
 
 
-def generate_first_gen(classes, population_size, class_number, room_number):
+def generate_first_gen(classes, population_size, room_number):
     generation_list = []
     for i in range (population_size):
-            current_individual = Schedule(class_count=class_number, room_count=room_number)
-            for j in range(class_number): # iterating through the indexes of all classes
-                random_class_index = random.randint(0, 4*12*room_number)
-                for k in range(classes[j].duration):
-                     current_individual.class_list[random_class_index + k].append(j) 
-                current_individual.mapping[j] = random_class_index
+            current_individual = Schedule(len(classes), room_number)
+            current_individual.set_random_classes(len(classes), room_number, classes)
             generation_list.append(current_individual)
+        
+    return generation_list
+
 
 # Needs to be tested
-def selection(generation, selection_percent):
-    generation.sort(reverse=True, key=Schedule.fitness())   # This will sort the Schedules in a descending order, meaning the best Schedules will be up front
+def selection(generation: list[Schedule], selection_percent):
+    generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())   # This will sort the Schedules in a descending order, meaning the best Schedules will be up front
     kept_individuals = selection_percent * len(generation)
     generation = generation[:int(kept_individuals)] # round that to nearest integer
     return generation
 
-def crossover_all(generation, population_size):
+def crossover_all(generation: list[Schedule], population_size: int, classes: list[Subject]):
     """Breeds individuals (Schedules) which passed the selection (previous step in life cycle)"""
     passed_selection = len(generation)
     while len(generation) < population_size:
-        parent1 = random.randint(0, passed_selection)
-        parent2 = random.randint(0, passed_selection)
+        parent1 = randint(0, passed_selection - 1)
+        parent2 = randint(0, passed_selection - 1)
 
-        generation.append(cross_over(parent1=parent1, parent2=parent2))
+        generation.append(cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes))
 
     return generation
      
-def mutations(generation, mutation_chance):
-     pass
+def mutations(generation: list[Schedule], mutation_chance, classes):
+    """Function that handles calling the mutate function in cases it needs to be called"""
+    
+    for individual in generation:
+        chance = random()
 
-def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter):
+        if chance <= mutation_chance:
+            individual.mutate(classes)
 
-    current_gen = generate_first_gen(classes, population_size)
-    generation_index = 0
+    return generation
+
+def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance,rooms):
+    """This is the main function that will do the genetic algorithm on populations, where the algorithm consists of:
+        0. Generating the first population (Gen. 1)
+        Then, we loop through the following 4 steps until one of the stopping criteria is fulfilled 
+        * Loop stop criteria - reached max number of generations or the best Schedule is within an acceptable distance from an optimal one.
+        The main loop consists of:
+            1. Selection
+            2. Crossover (breeding)
+            3. Mutation
+            4. Recalculating fitness upon the population
+        
+        returns the best species from the population, regarded as the best schedule
+    """
+    current_gen = generate_first_gen(classes, population_size,len(rooms))
+    generation_index = 1
     max_fitness = 0
 
-    while not (generation_index == max_generations - 1 and abs(max_fitness - best_fitness) < stopping_criteria):
+    while not (generation_index == max_generations + 1 or abs(max_fitness - best_fitness) < stopping_criteria):
+        print_generation(current_gen, generation_index)
         current_gen = selection(current_gen, selection_parameter)
-        current_gen = crossover_all(current_gen)
-        current_gen = mutations()
+        max_fitness = current_gen[0].get_fitness_score()
+        current_gen = crossover_all(current_gen, population_size, classes)
+        current_gen = mutations(current_gen, mutation_chance, classes)
         generation_index += 1
 
+    current_gen = selection(current_gen, selection_parameter) # called to sort the population by fitness
+    print("\n\nBEST BEBA")
+    print(current_gen[0])
+    return current_gen[0]  # This is the best schedule
 
 
-def print_generation(generation):
 
-    pass
+def print_generation(generation: list[Schedule], index: int):
+    """For debugging purposes, a function that will show the statistics of a generation"""
+    print("\nGeneration no.", index)
+    fitness_list = [ind.get_fitness_score() for ind in generation]
+    print("Best fitness:", max(fitness_list))
+    print("Mean fitness:", mean(fitness_list))
+    print("Median fitness:", median(fitness_list))
+    print("Worst fitness:", fitness_list[-1])
+
+    print("\n-------------------------------------")

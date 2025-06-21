@@ -1,5 +1,5 @@
 
-from random import random
+from random import random, randint
 
 from structures.subject import Subject
 
@@ -42,13 +42,20 @@ class Schedule:
         """Sets the fitness score of the schedule."""
         self.fitness_score = score
 
-    def set_random_class(self):
+    def set_random_classes(self, class_number: int, room_number: int, classes: list[Subject]):
         """
-        Sets a class at a random time slot and room. Time slots are 15 minutes each.
+        Used for randomizing an individual Schedule, used in creating the first generation.
+        Iterates through all the classes and assignes them to a random timeslot (15 minutes) and classroom, according to Schedule structure. 
         Adding a class to the schedule is done by appending it to the class_list and updating the mapping.
-        
         """
-        pass
+        for i in range(class_number): # iterating through the indexes of all classes
+            random_class_index = randint(0, len(self.class_list) - classes[i].duration)
+            for j in range(classes[i].duration):
+                    self.class_list[random_class_index + j].append(i) 
+            self.mapping[i] = random_class_index
+
+        self.fitness(classes)
+
 
     def fitness(self, all_class: list[Subject]) -> None:
         """
@@ -123,8 +130,79 @@ class Schedule:
         fitness_score = first_part_score * second_part_score
         self.set_fitness_score(fitness_score)
         return
-
     
+    # In the future possibly change more than 2 classes
+    def mutate(self, all_clases: list[Subject]):
+        """Funtion that handles the mutation of an individual.
+           To improve variability, there will be 3 kinds of mutations:
+           1. Moving a random class from scheduled classes to other random time slot.
+           2. Switching two classes time slots.
+           """
+        option = random()
+        if option > 0.5:
+            class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
+
+            old_position = self.mapping[class_index]
+
+            duration = all_clases[class_index].duration
+            
+            for i in range(old_position, old_position + duration):
+                self.class_list[i].remove(class_index)
+
+            new_position = randint(0, len(self.class_list) - duration) # We choose a spot in the Schedule (all days, rooms) to which we move the class
+
+            for j in range(new_position, new_position + duration):
+                self.class_list[j].append(class_index)
+
+            self.mapping[class_index] = new_position
+
+        else:
+            p = randint(0, len(self.mapping) - 1)
+            q = randint(0, len(self.mapping) - 1)
+
+            if p == q:
+                if p == len(self.mapping) - 1:
+                    p -= 2
+                p += 1
+
+            # Old positions for future reference
+            p_old = self.mapping[p]
+            q_old = self.mapping[q]
+
+            # First retrieve the duration of both classes from all_classes parameter
+            duration_p = all_clases[p].duration
+            duration_q = all_clases[q].duration
+
+            # Remove class 1, index p, from its' old position and add class 2, index q
+            for i in range(p_old, p_old + duration_p):
+                self.class_list[i].remove(p)
+            
+            # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
+            if p_old + duration_q > len(self.class_list):
+                for slot in range(duration_q):
+                    self.class_list[-1-slot].append(q)
+                self.mapping[q] = len(self.class_list) - duration_q
+            else:
+                for j in range(self.mapping[p], self.mapping[p] + duration_q):
+                    self.class_list[j].append(q)
+                self.mapping[q] = p_old
+
+            # Remove class 2, index q, from its' old position and add class 1, index p
+            for k in range(self.mapping[q], self.mapping[q] + duration_q):
+                self.class_list[k].remove(q)
+            
+            # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
+            if self.mapping[q] + duration_p > len(self.class_list):
+                for slot in range(duration_p):
+                    self.class_list[-1-slot].append(p)
+                self.mapping[p] = len(self.class_list) - duration_p
+            else:
+                for j in range(self.mapping[q], self.mapping[q] + duration_p):
+                    self.class_list[j].append(p)
+                
+                self.mapping[p] = q_old
+
+        self.fitness(all_clases)
 
 
     def __repr__(self):
@@ -139,7 +217,7 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) 
     This can be done by combining the class lists and mappings of both schedules.
 
     """
-    k = random.randint(0, len(parent1.class_list) - 1)
+    k = randint(0, len(parent1.mapping) - 1)
 
     class_count = len(parent1.mapping)
     room_count = len(parent1.class_list) // (12 * 4 * 5)
@@ -156,4 +234,6 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) 
         duration = class_list[i].get_duration()
         for j in range(duration):
             child.class_list[value + j].append(i)
+
+    child.fitness(class_list)
     return child
