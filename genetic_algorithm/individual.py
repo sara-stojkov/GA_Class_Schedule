@@ -91,32 +91,34 @@ class Schedule:
 
         first_part_score = 0
         second_part_score = 0
-        max_point = 20
+        max_point = 9
 
         for k, v in self.mapping.items():
             curr = 0
             # if there is no class right before
             duration = all_class[k].get_duration()
             if v == 0:
-                curr+=5
+                curr+=2
             else:
                 if self.class_list[v-1] == []:
-                    curr+=5
+                    curr+=2
             # if there is no class right after
             if v + duration == len(self.class_list):
-                curr+=5
+                curr+=2
             elif self.class_list[v + duration] == []:
-                curr+=5
+                curr+=2
             # if there is no class in the same time slot
-            temp_point = 10
+            temp_point = 5
             for i in range(v, v + duration):
                 if len(self.class_list[i]) > 1:
-                    temp_point = - 50
+                    temp_point = -5
+                elif len(self.class_list[i])>2:
+                    temp_point= -25
                     break
 
             first_part_score += curr + temp_point
 
-        first_part_score = (first_part_score / (len(self.mapping) * max_point)) * 10000000
+        first_part_score = (first_part_score / (len(self.mapping) * max_point)) * 100
  
 
         for i in range(0, len(self.class_list),12*4):
@@ -129,13 +131,13 @@ class Schedule:
                     break
             if prefix==-1:
                 prefix=sufix=12*4
-                
+
             # Find the last non-empty slot in the first part of the day, end of the working day
             for j in range(12*4-1, -1, -1):
                 if self.class_list[i+j]:
                     sufix = j
                     break
-            second_part_score += (prefix**2) * (sufix**2)
+            second_part_score += prefix**2 * sufix**2
                 
         fitness_score = first_part_score * second_part_score
         self.set_fitness_score(fitness_score)
@@ -251,6 +253,15 @@ class Schedule:
                 print("  -------------------------")
             print("*****************************")
 
+    def no_overlap(self):
+
+        for list in self.class_list:
+            if len(list) > 1:
+                print("OVERLAP!!!!!!!! NOT GOOD!!!!")
+                return
+        
+        print("\n YAYYYYYY NO OVERLAP, VALID SCHEDULE!!!! \n   >>>>>>>>>>>>>>>")
+
 
 def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) -> Schedule:
     """
@@ -276,5 +287,6 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) 
         for j in range(duration):
             child.class_list[value + j].append(i)
 
-    child.fitness(class_list)
+    child.mutate(class_list)
+    # child.fitness(class_list)
     return child

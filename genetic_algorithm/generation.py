@@ -2,6 +2,7 @@
 import random
 from statistics import mean, median
 from genetic_algorithm.individual import *
+import time
 
 
 def generate_first_gen(classes, population_size, room_number):
@@ -70,6 +71,8 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
 
     current_gen = selection(current_gen, selection_parameter) # called to sort the population by fitness
     print("\n\nBEST BEBA")
+    current_gen[0].no_overlap()
+    time.sleep(5)
     current_gen[0].nice_print()
     return current_gen[0]  # This is the best schedule
 
