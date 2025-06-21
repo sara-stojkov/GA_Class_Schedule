@@ -86,12 +86,12 @@ class Schedule:
             if v == 0:
                 curr+=1
             else:
-                if self.class_list[v-1] is None:
+                if self.class_list[v-1] == []:
                     curr+=1
             # if there is no class right after
             if v + duration == len(self.class_list):
                 curr+=1
-            elif self.class_list[v + duration] is None:
+            elif self.class_list[v + duration] == []:
                 curr+=1
             # if there is no class in the same time slot
             temp_point = 1
