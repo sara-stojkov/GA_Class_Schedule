@@ -11,11 +11,11 @@ def load_data(file_path):
             rooms[i]= room[i].strip()
 
         n=len(lines[2:])
-        events= [[None,False] for _ in range(n)]
+        events= [None for _ in range(n)]
         for i in range(n):
             event=lines[i+2].strip().split(',')
-            s = Subject(event[0], int(event[1]), i)
-            events[i][0] = s
+            s = Subject(event[0], int(event[1]))
+            events[i] = s
         
         return rooms, events
     
@@ -26,18 +26,9 @@ def minutes_to_time(minutes):
     mins = minutes % 60
     return f"{hours:02}:{mins:02}"
 
-def time_to_minutes(time_str):
-    """Convert a time string in HH:MM format to minutes since 7:00."""
-    hours, mins = map(int, time_str.split(':'))
-    return (hours - 7) * 60 + mins
-
 def duration_to_minutes(duration_str):
     """Convert a duration string in HH:MM format to minutes."""
     hours, mins = map(int, duration_str.split(':'))
     return hours * 60 + mins
 
-def reset_events(events):
-    """Reset the event to its initial state."""
-    for event in events:
-        event[1] = False
         

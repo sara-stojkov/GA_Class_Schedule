@@ -1,11 +1,12 @@
 class Subject:
-    """Represents a class of a subject with a name, duration, and index that can be easily accessed in the list."""
+    """Represents a class of a subject with a name and duration that can be easily accessed in the list."""
 
-    __slots__ = ('name', 'duration', 'index')
-    def __init__(self, name: str, duration: int, index: int ):
+    __slots__ = ('name', 'duration')
+    def __init__(self, name: str, duration: int):
         self.name = name
-        self.duration = duration
-        self.index = index
+        self.duration = duration // 15
+
+        
 
     def get_name(self):
         """Returns the name of the subject."""
@@ -15,46 +16,21 @@ class Subject:
         """Returns the duration of the subject."""
         return self.duration
 
-    def get_index(self):
-        """Returns the index of the subject."""
-        return self.index
-    
     def __repr__(self):
-        return f"Subject(name={self.name}, duration={self.duration}, index={self.index})"
+        return f"Subject(name={self.name}, duration={self.duration})"
 
     def __str__(self):
-        return f"Subject: {self.name}, Duration: {self.duration}, Index: {self.index}"
+        return f"Subject: {self.name}, Duration: {self.duration}"
 
     def __eq__(self, other):
         if not isinstance(other, Subject):
             return NotImplemented
         return (self.name == other.name and 
-                self.duration == other.duration and 
-                self.index == other.index)
+                self.duration == other.duration)
     
     def __hash__(self):
-        return hash((self.name, self.duration, self.index))
-    
-    def __lt__(self, other):
-        if not isinstance(other, Subject):
-            return NotImplemented
-        return self.index < other.index
-    
-    def __le__(self, other):
-        if not isinstance(other, Subject):
-            return NotImplemented
-        return self.index <= other.index
-    
-    def __gt__(self, other):
-        if not isinstance(other, Subject):
-            return NotImplemented
-        return self.index > other.index
-    
-    def __ge__(self, other):
-        if not isinstance(other, Subject):
-            return NotImplemented
-        return self.index >= other.index
-    
+        return hash((self.name, self.duration))
+
     def __ne__(self, other):
         if not isinstance(other, Subject):
             return NotImplemented
