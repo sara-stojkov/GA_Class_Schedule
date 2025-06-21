@@ -109,8 +109,8 @@ class Schedule:
 
             first_part_score += curr + temp_point
 
-        first_part_score = first_part_score / (len(self.mapping) * max_point)
-
+        first_part_score = first_part_score / (len(self.mapping) * max_point)  * 1000000
+ 
 
         for i in range(0, len(self.class_list),12*4):
             sufix=0
@@ -125,9 +125,9 @@ class Schedule:
                 if self.class_list[i+j]:
                     sufix = j
                     break
-            second_part_score += prefix *sufix*15*15
+            second_part_score += (prefix**2)*15 * (sufix**2) *15
                 
-        fitness_score = first_part_score * second_part_score
+        fitness_score = first_part_score + second_part_score
         self.set_fitness_score(fitness_score)
         return
     
@@ -147,7 +147,8 @@ class Schedule:
             duration = all_clases[class_index].duration
             
             for i in range(old_position, old_position + duration):
-                self.class_list[i].remove(class_index)
+                if class_index in self.class_list[i]:
+                    self.class_list[i].remove(class_index)
 
             new_position = randint(0, len(self.class_list) - duration) # We choose a spot in the Schedule (all days, rooms) to which we move the class
 
@@ -156,51 +157,53 @@ class Schedule:
 
             self.mapping[class_index] = new_position
 
-        else:
-            p = randint(0, len(self.mapping) - 1)
-            q = randint(0, len(self.mapping) - 1)
+        # else:
+        #     p = randint(0, len(self.mapping) - 1)
+        #     q = randint(0, len(self.mapping) - 1)
 
-            if p == q:
-                if p == len(self.mapping) - 1:
-                    p -= 2
-                p += 1
+        #     if p == q:
+        #         if p == len(self.mapping) - 1:
+        #             p -= 2
+        #         p += 1
 
-            # Old positions for future reference
-            p_old = self.mapping[p]
-            q_old = self.mapping[q]
+        #     # Old positions for future reference
+        #     p_old = self.mapping[p]
+        #     q_old = self.mapping[q]
 
-            # First retrieve the duration of both classes from all_classes parameter
-            duration_p = all_clases[p].duration
-            duration_q = all_clases[q].duration
+        #     # First retrieve the duration of both classes from all_classes parameter
+        #     duration_p = all_clases[p].duration
+        #     duration_q = all_clases[q].duration
 
-            # Remove class 1, index p, from its' old position and add class 2, index q
-            for i in range(p_old, p_old + duration_p):
-                self.class_list[i].remove(p)
+        #     # Remove class 1, index p, from its' old position and add class 2, index q
+        #     for i in range(p_old, p_old + duration_p):
+        #         if p in self.class_list[i]:
+        #             self.class_list[i].remove(p)
             
-            # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
-            if p_old + duration_q > len(self.class_list):
-                for slot in range(duration_q):
-                    self.class_list[-1-slot].append(q)
-                self.mapping[q] = len(self.class_list) - duration_q
-            else:
-                for j in range(self.mapping[p], self.mapping[p] + duration_q):
-                    self.class_list[j].append(q)
-                self.mapping[q] = p_old
+        #     # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
+        #     if p_old + duration_q > len(self.class_list):
+        #         for slot in range(duration_q):
+        #             self.class_list[-1-slot].append(q)
+        #         self.mapping[q] = len(self.class_list) - duration_q
+        #     else:
+        #         for j in range(self.mapping[p], self.mapping[p] + duration_q):
+        #             self.class_list[j].append(q)
+        #         self.mapping[q] = p_old
 
-            # Remove class 2, index q, from its' old position and add class 1, index p
-            for k in range(self.mapping[q], self.mapping[q] + duration_q):
-                self.class_list[k].remove(q)
+        #     # Remove class 2, index q, from its' old position and add class 1, index p
+        #     for k in range(self.mapping[q], self.mapping[q] + duration_q):
+        #         if q in self.class_list[k]:
+        #             self.class_list[k].remove(q)
             
-            # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
-            if self.mapping[q] + duration_p > len(self.class_list):
-                for slot in range(duration_p):
-                    self.class_list[-1-slot].append(p)
-                self.mapping[p] = len(self.class_list) - duration_p
-            else:
-                for j in range(self.mapping[q], self.mapping[q] + duration_p):
-                    self.class_list[j].append(p)
+        #     # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
+        #     if self.mapping[q] + duration_p > len(self.class_list):
+        #         for slot in range(duration_p):
+        #             self.class_list[-1-slot].append(p)
+        #         self.mapping[p] = len(self.class_list) - duration_p
+        #     else:
+        #         for j in range(self.mapping[q], self.mapping[q] + duration_p):
+        #             self.class_list[j].append(p)
                 
-                self.mapping[p] = q_old
+        #         self.mapping[p] = q_old
 
         self.fitness(all_clases)
 
@@ -210,6 +213,30 @@ class Schedule:
 
     def __str__(self):
         return f"Schedule: {self.class_list}, {self.mapping}, {self.fitness_score}"
+    
+    def nice_print(self):
+        print("\n-------------------------------")
+        print("SCHEDULE BY DAYS AND ROOMS:\n")
+
+        slots_per_hour = 4
+        hours_per_day = 12
+        days_per_week = 5
+
+        slots_per_day_per_room = hours_per_day * slots_per_hour  # 48
+        slots_per_day_all_rooms = slots_per_day_per_room * (len(self.class_list) // (slots_per_day_per_room * days_per_week))
+        num_rooms = len(self.class_list) // (slots_per_day_per_room * days_per_week)
+
+        for day in range(days_per_week):
+            print(f"\nDAY {day + 1}")
+            for room in range(num_rooms):
+                print(f"  ROOM {room + 1}")
+                start = (day * slots_per_day_per_room * num_rooms) + (room * slots_per_day_per_room)
+                end = start + slots_per_day_per_room
+                for slot in range(start, end):
+                    print(f"    Slot {slot - start:2d}: {self.class_list[slot]}")
+                print("  -------------------------")
+            print("*****************************")
+
 
 def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) -> Schedule:
     """

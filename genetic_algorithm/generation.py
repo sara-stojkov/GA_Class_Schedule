@@ -70,7 +70,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
 
     current_gen = selection(current_gen, selection_parameter) # called to sort the population by fitness
     print("\n\nBEST BEBA")
-    print(current_gen[0])
+    current_gen[0].nice_print()
     return current_gen[0]  # This is the best schedule
 
 
