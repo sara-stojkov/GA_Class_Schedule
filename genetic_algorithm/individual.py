@@ -110,10 +110,10 @@ class Schedule:
             # if there is no class in the same time slot
             temp_point = 5
             for i in range(v, v + duration):
-                if len(self.class_list[i]) > 1:
-                    temp_point = -5
+                if len(self.class_list[i]) == 2:
+                    temp_point = -30
                 elif len(self.class_list[i])>2:
-                    temp_point= -25
+                    temp_point= - 40
                     break
 
             first_part_score += curr + temp_point
@@ -130,28 +130,38 @@ class Schedule:
                     prefix = j
                     break
             if prefix==-1:
-                prefix=sufix=12*4
+                prefix=sufix=12*4 // 10 # so it does not prioritise empty days
 
             # Find the last non-empty slot in the first part of the day, end of the working day
             for j in range(12*4-1, -1, -1):
                 if self.class_list[i+j]:
                     sufix = j
                     break
-            second_part_score += prefix**2 * sufix**2
+            second_part_score += (prefix**3 * sufix**3) * 120 
                 
         fitness_score = first_part_score * second_part_score
         self.set_fitness_score(fitness_score)
         return
     
     # In the future possibly change more than 2 classes
-    def mutate(self, all_clases: list[Subject]):
+    # In future changes should be more heavy to introduce variance
+    def mutate(self, mutation_chance: int, all_clases: list[Subject]):
         """Funtion that handles the mutation of an individual.
            To improve variability, there will be 2 kinds of mutations:
            1. Moving a random class from scheduled classes to other random time slot.
            2. Switching two classes time slots. (In the works, causes errors)
            """
-        option = random()
-        if option > 0.5:
+        
+        mutation_happens = random()
+        # The principle is the following: We generate a random number between 0 and 1. Then we compare that number to the parameter
+        # mutation_chance - if the random number is smaller than mutation chance then we mutate the individual. Otherwise, we exit this function,
+        # which is what is implemented below
+        if mutation_happens > mutation_chance:
+            return
+        weight = random()
+        class_num = int((weight * 100) % 10 + 1)
+        # Will mutate 1 - 10 classes randomly
+        for i in range(class_num):
             class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
             old_position = self.mapping[class_index]
@@ -253,6 +263,79 @@ class Schedule:
                 print("  -------------------------")
             print("*****************************")
 
+
+    def write_schedule_to_html(self, classes: list[Subject], filename: str):
+        """
+        Write the schedule to an HTML file in a clear table format:
+        - Each day has a separate table.
+        - Each table shows rows for time slots and columns for rooms.
+        - Each cell shows the class name(s) scheduled in that slot.
+        """
+
+        slots_per_hour = 4
+        hours_per_day = 12
+        slots_per_day_per_room = slots_per_hour * hours_per_day  # 48
+        days_per_week = 5
+        num_rooms = len(self.class_list) // (slots_per_day_per_room * days_per_week)
+
+        html = [
+            "<!DOCTYPE html>",
+            "<html>",
+            "<head>",
+            "<meta charset='UTF-8'>",
+            "<title>Schedule</title>",
+            "<style>",
+            "table { border-collapse: collapse; margin: 20px; }",
+            "th, td { border: 1px solid black; padding: 5px; text-align: center; }",
+            "th { background-color: #f2f2f2; }",
+            "</style>",
+            "</head>",
+            "<body>",
+            f"<h1>Schedule (Fitness Score: {self.get_fitness_score():.2f})</h1>",
+        ]
+
+        # For each day, create a table
+        for day in range(days_per_week):
+            html.append(f"<h2>Day {day + 1}</h2>")
+            html.append("<table>")
+            
+            # Table header: time slot | room 1 | room 2 | ...
+            header = "<tr><th>Time</th>"
+            for room in range(num_rooms):
+                header += f"<th>Room {room + 1}</th>"
+            header += "</tr>"
+            html.append(header)
+
+            # For each time slot in a day
+            for slot_in_day in range(slots_per_day_per_room):
+                row = f"<tr><td>{7 + slot_in_day // slots_per_hour}:{(slot_in_day % slots_per_hour) * 15:02d}</td>"
+                
+                for room in range(num_rooms):
+                    # Compute the global slot index
+                    slot_idx = (day * num_rooms * slots_per_day_per_room) + (room * slots_per_day_per_room) + slot_in_day
+                    slot_classes = self.class_list[slot_idx]
+
+                    if slot_classes:
+                        names = ", ".join(classes[i].name for i in slot_classes)
+                    else:
+                        names = "-"
+                    row += f"<td>{names}</td>"
+
+                row += "</tr>"
+                html.append(row)
+
+            html.append("</table>")
+
+        html.append("</body>")
+        html.append("</html>")
+
+        # Write to file
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(html))
+
+        print(f"\n Schedule written to {filename}")
+
+
     def no_overlap(self):
 
         for list in self.class_list:
@@ -263,10 +346,11 @@ class Schedule:
         print("\n YAYYYYYY NO OVERLAP, VALID SCHEDULE!!!! \n   >>>>>>>>>>>>>>>")
 
 
-def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) -> Schedule:
+def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: int) -> Schedule:
     """
     Performs crossover between two schedules.
-    This can be done by combining the class lists and mappings of both schedules.
+    This is done by combining the class list of twi schedules.
+    2 parents are combined to get 2 child Schedules.
 
     """
     k = randint(0, len(parent1.mapping) - 1)
@@ -287,6 +371,7 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject]) 
         for j in range(duration):
             child.class_list[value + j].append(i)
 
-    child.mutate(class_list)
+    child.mutate(mutation_chance=mutations, all_clases=class_list)
+    child.fitness(class_list)
     # child.fitness(class_list)
     return child
