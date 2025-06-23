@@ -18,14 +18,15 @@ def generate_first_gen(classes, population_size, room_number):
 # Implements elitism - only a few schedules from current gen can survive, we fill the new gen with only children
 def selection(generation: list[Schedule], selection_percent, population_size):
     """Chooses which Schedules (individuals) survive to the next generation"""
-    # generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())   # This will sort the Schedules in a descending order, meaning the best Schedules will be up front
-    # kept_individuals = selection_percent * len(generation)
-    # generation = generation[:int(kept_individuals)] # round that to nearest integer
-    # return generation
-    # generation.sort(reverse=True, key= lambda Schedule: Schedule.get_fitness_score())
-    # elites = generation[]
-
+    num_parents= int(selection_percent * population_size)  # How many parents will survive to the next generation
+    surviving_schedules = generation[:num_parents]  # Take the best Schedules from the current generation
+    children = generation[population_size:] 
+    children.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())  # Sort children by fitness score 
+    generation = surviving_schedules + children[:population_size - num_parents]  # Fill the new generation with the best children
+    generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
+    
     return generation
+    
 
 def roulette_parent_selection(generation: list[Schedule]):
     generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
@@ -38,16 +39,16 @@ def roulette_parent_selection(generation: list[Schedule]):
 def crossover_all(generation: list[Schedule], population_size: int, mutation_chance: int, classes: list[Subject]):
     """Breeds individuals (Schedules) which passed the selection (previous step in life cycle)"""
     passed_selection = len(generation)
-    while len(generation) < population_size:
+    while len(generation) < 2 * population_size:
         # Roulette selection of parents
 
         # parent1 = randint(0, passed_selection - 1)
         # parent2 = randint(0, passed_selection - 1)
         parent1, parent2 = roulette_parent_selection(generation=generation)
-        child1 = cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes, mutations = mutation_chance)
+        child1, child2 = cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes, mutations = mutation_chance)
 
         generation.append(child1)
-        # generation.append(child2)
+        generation.append(child2)
 
     return generation
      
@@ -80,13 +81,14 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
 
     while not (generation_index == max_generations + 1 or abs(max_fitness - best_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
-        current_gen = selection(current_gen, selection_parameter)
         max_fitness = current_gen[0].get_fitness_score()
         current_gen = crossover_all(current_gen, population_size, mutation_chance, classes) # Crossover includes mutations of children
+        current_gen = selection(current_gen, selection_parameter, population_size)
+
         # current_gen = mutations(current_gen, mutation_chance, classes)
         generation_index += 1
 
-    current_gen = selection(current_gen, selection_parameter) # called to sort the population by fitness
+    current_gen = selection(current_gen, selection_parameter,population_size) # called to sort the population by fitness
     print("\n\nBEST BEBA")
     time.sleep(5)
     current_gen[0].nice_print()    
@@ -104,6 +106,6 @@ def print_generation(generation: list[Schedule], index: int):
     print("Best fitness:", max(fitness_list))
     print("Mean fitness:", mean(fitness_list))
     print("Median fitness:", median(fitness_list))
-    print("Worst fitness:", fitness_list[-1])
+    print("Worst fitness:", min(fitness_list))
 
     print("\n-------------------------------------")

@@ -91,34 +91,34 @@ class Schedule:
 
         first_part_score = 0
         second_part_score = 0
-        max_point = 9
+        max_point = 4
 
         for k, v in self.mapping.items():
             curr = 0
             # if there is no class right before
             duration = all_class[k].get_duration()
             if v == 0:
-                curr+=2
+                curr+=1
             else:
                 if self.class_list[v-1] == []:
-                    curr+=2
+                    curr+=1
             # if there is no class right after
             if v + duration == len(self.class_list):
-                curr+=2
+                curr+=1
             elif self.class_list[v + duration] == []:
-                curr+=2
+                curr+=1
             # if there is no class in the same time slot
-            temp_point = 5
+            temp_point = 2
             for i in range(v, v + duration):
                 if len(self.class_list[i]) == 2:
-                    temp_point = -30
+                    temp_point = - 1
                 elif len(self.class_list[i])>2:
-                    temp_point= - 40
+                    temp_point= - 2
                     break
 
             first_part_score += curr + temp_point
 
-        first_part_score = (first_part_score / (len(self.mapping) * max_point)) * 100
+        first_part_score = (first_part_score / (len(self.mapping) * max_point)) 
  
 
         for i in range(0, len(self.class_list),12*4):
@@ -137,8 +137,10 @@ class Schedule:
                 if self.class_list[i+j]:
                     sufix = j
                     break
-            second_part_score += (prefix**3 * sufix**3) * 120 
-                
+            second_part_score += (prefix * 15 * sufix * 15)  # 15 is the length of a quarter of an hour, so we multiply by it to get the time in minutes
+
+        second_part_score = second_part_score / ((len(self.class_list) // (12 * 4)))
+
         fitness_score = first_part_score * second_part_score
         self.set_fitness_score(fitness_score)
         return
@@ -157,10 +159,11 @@ class Schedule:
         # mutation_chance - if the random number is smaller than mutation chance then we mutate the individual. Otherwise, we exit this function,
         # which is what is implemented below
         if mutation_happens > mutation_chance:
+            self.fitness(all_clases)  # If we do not mutate, we still need to calculate the fitness score
             return
-        weight = random()
-        class_num = int((weight * 100) % 10 + 1)
-        # Will mutate 1 - 10 classes randomly
+        # weight = random()
+        class_num = randint(1, len(all_clases)//4)
+        # Will mutate 1 -  classes randomly
         for i in range(class_num):
             class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
@@ -357,21 +360,35 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], 
 
     class_count = len(parent1.mapping)
     room_count = len(parent1.class_list) // (12 * 4 * 5)
-    child = Schedule(class_count, room_count)
+    child1 = Schedule(class_count, room_count)
     for i in range(k):
         value = parent1.mapping.get(i, -1)
-        child.mapping[i] = value
+        child1.mapping[i] = value
         duration = class_list[i].get_duration()
         for j in range(duration):
-            child.class_list[value + j].append(i)
+            child1.class_list[value + j].append(i)
     for i in range(k, class_count):
         value = parent2.mapping.get(i, -1)
-        child.mapping[i] = value
+        child1.mapping[i] = value
         duration = class_list[i].get_duration()
         for j in range(duration):
-            child.class_list[value + j].append(i)
+            child1.class_list[value + j].append(i)
+    child2= Schedule(class_count, room_count)
+    for i in range(k):
+        value = parent2.mapping.get(i, -1)
+        child2.mapping[i] = value
+        duration = class_list[i].get_duration()
+        for j in range(duration):
+            child2.class_list[value + j].append(i)
+    for i in range(k, class_count):
+        value = parent1.mapping.get(i, -1)
+        child2.mapping[i] = value
+        duration = class_list[i].get_duration()
+        for j in range(duration):
+            child2.class_list[value + j].append(i)
 
-    child.mutate(mutation_chance=mutations, all_clases=class_list)
-    child.fitness(class_list)
+    child2.mutate(mutation_chance=mutations, all_clases=class_list)
+    child1.mutate(mutation_chance=mutations, all_clases=class_list)
+    # child1.fitness(class_list)
     # child.fitness(class_list)
-    return child
+    return child1, child2
