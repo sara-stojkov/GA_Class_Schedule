@@ -89,61 +89,67 @@ class Schedule:
         :param all_class: The list of classes.
         """
 
-        first_part_score = 0
-        second_part_score = 0
-        max_point = 4
+        first_score_total = 0
+        max_points = 4  # max per class: 1+1+2
+        total_classes = len(self.mapping)
 
-        for k, v in self.mapping.items():
-            curr = 0
-            # if there is no class right before
-            duration = all_class[k].get_duration()
-            if v == 0:
-                curr+=1
+        # First Part: Schedule Validity
+        for class_index, start_slot in self.mapping.items():
+            duration = all_class[class_index].get_duration()
+            points = 0
+
+            # Check before
+            if start_slot == 0 or not self.class_list[start_slot - 1]:
+                points += 1
+
+            # Check after
+            if start_slot + duration >= len(self.class_list) or not self.class_list[start_slot + duration]:
+                points += 1
+
+            # Check slot overlap
+            overlap_penalty = 0
+            for i in range(start_slot, start_slot + duration):
+                if len(self.class_list[i]) > 1:
+                    overlap_penalty += 1
+
+            if overlap_penalty == 0:
+                points += 2  # clean
+            elif overlap_penalty == 1:
+                points += 0  # mild penalty
             else:
-                if self.class_list[v-1] == []:
-                    curr+=1
-            # if there is no class right after
-            if v + duration == len(self.class_list):
-                curr+=1
-            elif self.class_list[v + duration] == []:
-                curr+=1
-            # if there is no class in the same time slot
-            temp_point = 2
-            for i in range(v, v + duration):
-                if len(self.class_list[i]) == 2:
-                    temp_point = - 1
-                elif len(self.class_list[i])>2:
-                    temp_point= - 2
-                    break
+                points -= 1  # strong penalty
 
-            first_part_score += curr + temp_point
+            first_score_total += points
 
-        first_part_score = (first_part_score / (len(self.mapping) * max_point)) 
- 
+        first_part_score = first_score_total / (total_classes * max_points)
 
-        for i in range(0, len(self.class_list),12*4):
-            sufix=-1
-            prefix=-1
-            # Find the first non-empty slot in the first part of the day, start of the working day
-            for j in range(12*4):
-                if self.class_list[i+j]:
-                    prefix = j
-                    break
-            if prefix==-1:
-                prefix=sufix=12*4 // 10 # so it does not prioritise empty days
+        # Second Part: Schedule Spread (Late Starts + Early Finishes)
+        second_score_total = 0
+        slots_per_day = 12 * 4  # 12 hours * 4 = 48 slots/day
+        days = len(self.class_list) // slots_per_day
 
-            # Find the last non-empty slot in the first part of the day, end of the working day
-            for j in range(12*4-1, -1, -1):
-                if self.class_list[i+j]:
-                    sufix = j
-                    break
-            second_part_score += (prefix * 15 * sufix * 15)  # 15 is the length of a quarter of an hour, so we multiply by it to get the time in minutes
+        for day_start in range(0, len(self.class_list), slots_per_day):
+            slots = self.class_list[day_start: day_start + slots_per_day]
 
-        second_part_score = second_part_score / ((len(self.class_list) // (12 * 4)))
+            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day // 10)
+            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day // 10)
+            suffix = slots_per_day - suffix - 1  # Convert index from end
 
-        fitness_score = first_part_score * second_part_score
+            if prefix == slots_per_day // 10 and suffix == slots_per_day // 10:
+                # Empty day – prevent artificially high score
+                prefix = suffix = slots_per_day // 10
+
+            second_score_total += (prefix * 15) * ((slots_per_day - 1 - suffix) * 15)
+
+        # Normalize second part (optional but improves stability)
+        max_time = (15 * slots_per_day) ** 2
+        second_part_score = second_score_total / (max_time * days / 4)
+
+        # Final score: product or weighted sum
+        fitness_score = first_part_score * 0.4 + 0.6 * second_part_score
+        # Or try weighted sum: 0.7 * first_part_score + 0.3 * second_part_score
+
         self.set_fitness_score(fitness_score)
-        return
     
     # In the future possibly change more than 2 classes
     # In future changes should be more heavy to introduce variance
