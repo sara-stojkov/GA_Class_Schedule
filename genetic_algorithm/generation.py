@@ -15,12 +15,16 @@ def generate_first_gen(classes, population_size, room_number):
     return generation_list
 
 
-# Planning to implement elitism - only a few schedules from current gen can survive, we fill the new gen with only children
-def selection(generation: list[Schedule], selection_percent):
+# Implements elitism - only a few schedules from current gen can survive, we fill the new gen with only children
+def selection(generation: list[Schedule], selection_percent, population_size):
     """Chooses which Schedules (individuals) survive to the next generation"""
-    generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())   # This will sort the Schedules in a descending order, meaning the best Schedules will be up front
-    kept_individuals = selection_percent * len(generation)
-    generation = generation[:int(kept_individuals)] # round that to nearest integer
+    # generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())   # This will sort the Schedules in a descending order, meaning the best Schedules will be up front
+    # kept_individuals = selection_percent * len(generation)
+    # generation = generation[:int(kept_individuals)] # round that to nearest integer
+    # return generation
+    # generation.sort(reverse=True, key= lambda Schedule: Schedule.get_fitness_score())
+    # elites = generation[]
+
     return generation
 
 def roulette_parent_selection(generation: list[Schedule]):
