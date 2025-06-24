@@ -2,16 +2,19 @@
 
 ## Authors: Sara Stojkov & Marko Milutin
 
-## The task
-Implement a genetic algorithm in Python to create a timetable for university lectures and exercises. Each event must be assigned a day, time, and classroom, following these constraints:
+## Overview
 
-A minimum 15-minute break between events in the same classroom
+Implementing a genetic algorithm in Python to create a timetable for university lectures and exercises. Each event must be assigned a day, time, and classroom, following these constraints:
 
-Classes run only from 7:00 AM to 7:00 PM, Monday to Friday
+- A minimum 15-minute break between events in the same classroom
 
-The goal is to maximize the product of the average idle times before the first and after the last event for each classroom and day. Input data is provided in _data_timetable.txt_. No GUI is needed — focus on the core algorithm.
+- Classes run only from 7:00 AM to 7:00 PM, Monday to Friday
 
-Document the project (2–5 pages) describing the program structure, problem constraints, mutation and crossover operators, selection strategy, parameter choices, and algorithm results.
+The goal is to **maximize the product of the average idle times before the first and after the last event for each classroom and day**. Input data is provided in _data_timetable.txt_. 
+
+No GUI is implemented but the final schedule is saved as a HTML file which containts the Schedule day by day and room by room. 
+
+Also, the documentation of the project is in the _docs_ folder describing the program structure, problem constraints, mutation and crossover operators, selection strategy, parameter choices, and algorithm results.
 
 ## Implementation
 
@@ -24,4 +27,4 @@ Document the project (2–5 pages) describing the program structure, problem con
 4. Crossovers
 
 
-## Results
+## Results and final schedule
