@@ -273,7 +273,7 @@ class Schedule:
             print("*****************************")
 
 
-    def write_schedule_to_html(self, classes: list[Subject], filename: str):
+    def write_schedule_to_html(self, classes: list[Subject], rooms, days, filename: str):
         """
         Write the schedule to an HTML file in a clear table format:
         - Each day has a separate table.
@@ -292,7 +292,7 @@ class Schedule:
             "<html>",
             "<head>",
             "<meta charset='UTF-8'>",
-            "<title>Schedule</title>",
+            "<title>Raspored časova</title>",
             "<style>",
             "table { border-collapse: collapse; margin: 20px; }",
             "th, td { border: 1px solid black; padding: 5px; text-align: center; }",
@@ -300,18 +300,18 @@ class Schedule:
             "</style>",
             "</head>",
             "<body>",
-            f"<h1>Schedule (Fitness Score: {self.get_fitness_score():.2f})</h1>",
+            f"<h1>Raspored za SIIT (Fitness Score: {self.get_fitness_score():.2f})</h1>",
         ]
 
         # For each day, create a table
         for day in range(days_per_week):
-            html.append(f"<h2>Day {day + 1}</h2>")
+            html.append(f"<h2>{days[day]}</h2>")
             html.append("<table>")
             
             # Table header: time slot | room 1 | room 2 | ...
-            header = "<tr><th>Time</th>"
+            header = "<tr><th>Vreme</th>"
             for room in range(num_rooms):
-                header += f"<th>Room {room + 1}</th>"
+                header += f"<th>Učionica {rooms[room]}</th>"
             header += "</tr>"
             html.append(header)
 

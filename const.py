@@ -1,9 +1,9 @@
 DAYS = ["Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota", "Nedelja"] # day names for display
 DAYS_NUM = 5
 FILE_PATH = "data_timetable.txt"
-POPULATION_SIZE = 200
-MUTATION_CHANCE = 0.2
-KEEP_PERCENT = 0.2
-MAX_GENERATIONS = 800
+POPULATION_SIZE = 150
+MUTATION_CHANCE = 0.24
+KEEP_PERCENT = 0.15
+MAX_GENERATIONS = 2000
 
 

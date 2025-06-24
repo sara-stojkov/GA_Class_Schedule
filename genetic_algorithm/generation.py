@@ -16,19 +16,36 @@ def generate_first_gen(classes, population_size, room_number):
 
 
 # Implements elitism - only a few schedules from current gen can survive, we fill the new gen with only children
-def selection(generation: list[Schedule], selection_percent, population_size):
-    """Chooses which Schedules (individuals) survive to the next generation"""
+def selection(generation: list[Schedule], child_generation: list[Schedule], selection_percent, population_size):
+    """Chooses which Schedules (individuals) survive to the next generation.
+    Elitism is implemented by selecting 10% of best individuals from the parent generation.
+    Then, the rest of the new population is filled with the best individuals from the new generation.
+    That way, monotomy is harder to achieve and the generations get a big refresh."""
+
     num_parents= int(selection_percent * population_size)  # How many parents will survive to the next generation
-    surviving_schedules = generation[:num_parents]  # Take the best Schedules from the current generation
-    children = generation[population_size:] 
-    children.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())  # Sort children by fitness score 
-    generation = surviving_schedules + children[:population_size - num_parents]  # Fill the new generation with the best children
-    generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
+
+    generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score()) 
+    surviving_parents = generation[:num_parents]  # Take the best Schedules from the current generation
+
+    num_children = population_size - num_parents
+
+    child_generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())  # Sort children by fitness score 
+    surviving_children = child_generation[:num_children]
+    final_gen = surviving_parents + surviving_children  # Fill the new generation with the best of both batches
+
+    final_gen.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
     
-    return generation
+    return final_gen
     
 
 def roulette_parent_selection(generation: list[Schedule]):
+    """Used for selecting a parent pair in crossover. 
+    It is based on ranking all individuals and assigning them a rank to stop big differences between their fitness scores.
+    Then, for each individual in a generation, a random number is generated between 0 and 1.
+    The rank and the random score are multiplied and that is the final score of an individual.
+    The two Schedules with best final scores are selected for breeding. 
+    This way each individual has a chance to be picked but better individuals are favored."""
+
     generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
     schedule_ranking = list(range(len(generation), 0, -1))
     random_scores = [random() for _ in range(len(schedule_ranking))]
@@ -38,19 +55,16 @@ def roulette_parent_selection(generation: list[Schedule]):
 
 def crossover_all(generation: list[Schedule], population_size: int, mutation_chance: int, classes: list[Subject]):
     """Breeds individuals (Schedules) which passed the selection (previous step in life cycle)"""
-    passed_selection = len(generation)
-    while len(generation) < 2 * population_size:
+    child_gen = []
+    while len(child_gen) < population_size:
         # Roulette selection of parents
-
-        # parent1 = randint(0, passed_selection - 1)
-        # parent2 = randint(0, passed_selection - 1)
         parent1, parent2 = roulette_parent_selection(generation=generation)
         child1, child2 = cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes, mutations = mutation_chance)
 
-        generation.append(child1)
-        generation.append(child2)
+        child_gen.append(child1)
+        child_gen.append(child2)
 
-    return generation
+    return child_gen
      
 # def mutations(generation: list[Schedule], mutation_chance, classes):
 #     """Function that handles calling the mutate function in cases it needs to be called"""
@@ -63,38 +77,37 @@ def crossover_all(generation: list[Schedule], population_size: int, mutation_cha
 
 #     return generation
 
-def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance,rooms):
+def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance, rooms, days):
     """This is the main function that will do the genetic algorithm on populations, where the algorithm consists of:
         0. Generating the first population (Gen. 1)
         Then, we loop through the following 4 steps until one of the stopping criteria is fulfilled 
         * Loop stop criteria - reached max number of generations or the best Schedule is within an acceptable distance from an optimal one.
         The main loop consists of:
-            1. Selection
-            2. Crossover (breeding) including possible mutations on children genomes
+            1. Crossover (breeding) including possible mutations on children genomes
+            2. Selection of best Schedules from the parent generation and the new children
             3. Recalculating fitness upon the population
         
         returns the best species from the population, regarded as the best schedule
     """
     current_gen = generate_first_gen(classes, population_size,len(rooms))
+    current_gen.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
     generation_index = 1
-    max_fitness = 0
+    max_fitness = current_gen[0].get_fitness_score()
 
     while not (generation_index == max_generations + 1 or abs(max_fitness - best_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
-        max_fitness = current_gen[0].get_fitness_score()
-        current_gen = crossover_all(current_gen, population_size, mutation_chance, classes) # Crossover includes mutations of children
-        current_gen = selection(current_gen, selection_parameter, population_size)
+        new_gen = crossover_all(current_gen, population_size, mutation_chance, classes) # Crossover includes mutations of children
+        current_gen = selection(current_gen, new_gen, selection_parameter, population_size)
 
-        # current_gen = mutations(current_gen, mutation_chance, classes)
+        max_fitness = current_gen[0].get_fitness_score()
         generation_index += 1
 
-    current_gen = selection(current_gen, selection_parameter,population_size) # called to sort the population by fitness
+    current_gen.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score()) # called to sort the population by fitness
     print("\n\nBEST BEBA")
-    time.sleep(5)
-    current_gen[0].nice_print()    
+    # current_gen[0].nice_print()    
     current_gen[0].no_overlap()
 
-    current_gen[0].write_schedule_to_html(classes, "schedules/probni4.html")
+    current_gen[0].write_schedule_to_html(classes, rooms, days, "schedules/novelabele.html")
     return current_gen[0]  # This is the best schedule
 
 
