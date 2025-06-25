@@ -44,12 +44,14 @@ class Schedule:
         """Sets the fitness score of the schedule."""
         self.fitness_score = score
 
-    def set_random_classes(self, class_number: int, room_number: int, classes: list[Subject]):
+    def set_random_classes(self, room_number: int, classes: list[Subject]):
         """
         Used for randomizing an individual Schedule, used in creating the first generation.
         Iterates through all the classes and assignes them to a random timeslot (15 minutes) and classroom, according to Schedule structure. 
         Adding a class to the schedule is done by appending it to the class_list and updating the mapping.
         """
+
+        class_number = len(classes)
         for i in range(class_number): # iterating through the indexes of all classes
             block_id = randint(0, self.num_blocks - 1) # first pick out a block
             block_start = block_id * self.block_size
@@ -59,7 +61,7 @@ class Schedule:
 
             for j in range(classes[i].duration):
                     self.class_list[random_class_index + j].append(i) 
-            self.mapping[i] = random_class_index
+            self.mapping[i] = random_class_index 
 
         self.fitness(classes)
 
@@ -154,10 +156,11 @@ class Schedule:
     # In the future possibly change more than 2 classes
     # In future changes should be more heavy to introduce variance
     def mutate(self, mutation_chance: int, all_clases: list[Subject]):
-        """Funtion that handles the mutation of an individual.
-           To improve variability, there will be 2 kinds of mutations:
-           1. Moving a random class from scheduled classes to other random time slot.
-           2. Switching two classes time slots. (In the works, causes errors)
+        """Function that handles the mutation of an individual.
+           Based on a predefined mutation_chance, the function determines whether a mutation will happen.
+           A mutation is defined as picking a random number n of classes (from 1 to a quarter of population size),
+           then placing each of those n classes in a randomly picked timeslot. 
+           By doing so, variability is increased and this is also a try to escape uniformness.
            """
         
         mutation_happens = random()
@@ -250,6 +253,7 @@ class Schedule:
         return f"Schedule: {self.class_list}, {self.mapping}, {self.fitness_score}"
     
     def nice_print(self):
+        """Prints out a Schedule timeslot by timeslot, to make debugging easier."""
         print("\n-------------------------------")
         print("SCHEDULE BY DAYS AND ROOMS:\n")
 
@@ -346,13 +350,16 @@ class Schedule:
 
 
     def no_overlap(self):
+        """Checks whether a Schedule has overlapping classes, therefore checks if it is valid.
+        The logic is simple, the function checks the length of each timeslot."""
 
         for list in self.class_list:
             if len(list) > 1:
-                print("OVERLAP!!!!!!!! NOT GOOD!!!!")
-                return
+                # print("OVERLAP!!!!!!!! NOT GOOD!!!!")
+                return False
         
         print("\n YAYYYYYY NO OVERLAP, VALID SCHEDULE!!!! \n   >>>>>>>>>>>>>>>")
+        return True
 
 
 def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: int) -> Schedule:

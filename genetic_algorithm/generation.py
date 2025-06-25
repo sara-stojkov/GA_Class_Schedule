@@ -6,19 +6,26 @@ import time
 
 
 def generate_first_gen(classes, population_size, room_number):
-    generation_list = []
+    """Generates the first population randomly, which is the first generation that starts the evolution. """
+    population = []
     for i in range (population_size):
-            current_individual = Schedule(len(classes), room_number)
-            current_individual.set_random_classes(len(classes), room_number, classes)
-            generation_list.append(current_individual)
+        # Initialize an empty Schedule
+        current_individual = Schedule(len(classes), room_number)
+        # Fill that empty Schedule with random classes
+        current_individual.set_random_classes(room_number, classes)
         
-    return generation_list
+        # while not current_individual.no_overlap():
+        #     current_individual.set_random_classes(room_number, classes)
+        # Add that individual Schedule to the population
+        population.append(current_individual)
+        
+    return population
 
 
-# Implements elitism - only a few schedules from current gen can survive, we fill the new gen with only children
+# Implements elitism - only a few schedules from current gen can survive, we fill the new gen with children only
 def selection(generation: list[Schedule], child_generation: list[Schedule], selection_percent, population_size):
     """Chooses which Schedules (individuals) survive to the next generation.
-    Elitism is implemented by selecting 10% of best individuals from the parent generation.
+    Elitism is implemented by selecting a small percent of best individuals from the parent generation.
     Then, the rest of the new population is filled with the best individuals from the new generation.
     That way, monotomy is harder to achieve and the generations get a big refresh."""
 
@@ -54,7 +61,8 @@ def roulette_parent_selection(generation: list[Schedule]):
     return sorted_scores[-1], sorted_scores[-2]
 
 def crossover_all(generation: list[Schedule], population_size: int, mutation_chance: int, classes: list[Subject]):
-    """Breeds individuals (Schedules) which passed the selection (previous step in life cycle)"""
+    """Breeds individuals (Schedules) which passed the selection (previous step in life cycle).
+    Calls the function roulette_parent_selection to pick the 2 parents and then breeds them, giving 2 new individuals."""
     child_gen = []
     while len(child_gen) < population_size:
         # Roulette selection of parents
@@ -66,16 +74,6 @@ def crossover_all(generation: list[Schedule], population_size: int, mutation_cha
 
     return child_gen
      
-# def mutations(generation: list[Schedule], mutation_chance, classes):
-#     """Function that handles calling the mutate function in cases it needs to be called"""
-    
-#     for individual in generation:
-#         chance = random()
-
-#         if chance <= mutation_chance:
-#             individual.mutate(classes)
-
-#     return generation
 
 def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance, rooms, days):
     """This is the main function that will do the genetic algorithm on populations, where the algorithm consists of:
@@ -103,12 +101,12 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
         generation_index += 1
 
     current_gen.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score()) # called to sort the population by fitness
-    print("\n\nBEST BEBA")
+    print("\n\nBEST SCHEDULE")
     # current_gen[0].nice_print()    
     current_gen[0].no_overlap()
 
-    current_gen[0].write_schedule_to_html(classes, rooms, days, "schedules/novelabele.html")
-    return current_gen[0]  # This is the best schedule
+    current_gen[0].write_schedule_to_html(classes, rooms, days, "schedules/vecagen.html")
+    return current_gen[0]  # This is the best schedule by fitness
 
 
 
