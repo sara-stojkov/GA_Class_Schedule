@@ -82,7 +82,13 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     while not (generation_index == max_generations + 1 or abs(max_fitness - best_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
         max_fitness = current_gen[0].get_fitness_score()
-        current_gen = crossover_all(current_gen, population_size, mutation_chance, classes) # Crossover includes mutations of children
+        if generation_index< max_generations/2:
+            mu = mutation_chance[0]
+        elif generation_index < max_generations * 0.75:
+            mu = mutation_chance[1]
+        else:
+            mu = mutation_chance[2]
+        current_gen = crossover_all(current_gen, population_size, mu, classes) # Crossover includes mutations of children
         current_gen = selection(current_gen, selection_parameter, population_size)
 
         # current_gen = mutations(current_gen, mutation_chance, classes)
@@ -90,8 +96,8 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
 
     current_gen = selection(current_gen, selection_parameter,population_size) # called to sort the population by fitness
     print("\n\nBEST BEBA")
-    time.sleep(5)
-    current_gen[0].nice_print()    
+    time.sleep(1)
+    # current_gen[0].nice_print()    
     current_gen[0].no_overlap()
 
     current_gen[0].write_schedule_to_html(classes, "schedules/probni4.html")

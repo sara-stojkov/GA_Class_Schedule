@@ -1,5 +1,5 @@
 
-from random import random, randint
+from random import random, randint, shuffle
 
 from structures.subject import Subject
 
@@ -50,16 +50,36 @@ class Schedule:
         Iterates through all the classes and assignes them to a random timeslot (15 minutes) and classroom, according to Schedule structure. 
         Adding a class to the schedule is done by appending it to the class_list and updating the mapping.
         """
-        for i in range(class_number): # iterating through the indexes of all classes
-            block_id = randint(0, self.num_blocks - 1) # first pick out a block
-            block_start = block_id * self.block_size
-            block_end = block_start + self.block_size - classes[i].duration
+        for i in range(class_number):
+            placed = False
+            tries = 0
+            while not placed and tries < 100:
+                block_id = randint(0, self.num_blocks - 1)
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - classes[i].duration
+                random_class_index = randint(block_start, block_end)
+               # Check for overlap
+                overlap = False
+                for j in range(classes[i].duration):
+                    if self.class_list[random_class_index + j]:
+                        overlap = True
+                        break
+                if not overlap:
+                    for j in range(classes[i].duration):
+                        self.class_list[random_class_index + j].append(i)
+                    self.mapping[i] = random_class_index
+                    placed = True
+                tries += 1
+            if not placed:
+                block_id = randint(0, self.num_blocks - 1)   # first pick out a block
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - classes[i].duration
 
-            random_class_index = randint(block_start, block_end)
+                random_class_index = randint(block_start, block_end)
 
-            for j in range(classes[i].duration):
-                    self.class_list[random_class_index + j].append(i) 
-            self.mapping[i] = random_class_index
+                for j in range(classes[i].duration):
+                        self.class_list[random_class_index + j].append(i) 
+                self.mapping[i] = random_class_index
 
         self.fitness(classes)
 
@@ -89,39 +109,35 @@ class Schedule:
         :param all_class: The list of classes.
         """
 
-        first_score_total = 0
-        max_points = 4  # max per class: 1+1+2
+        penalty= 1
         total_classes = len(self.mapping)
 
         # First Part: Schedule Validity
         for class_index, start_slot in self.mapping.items():
             duration = all_class[class_index].get_duration()
-            points = 0
+            
 
             # Check before
             if start_slot == 0 or not self.class_list[start_slot - 1]:
-                points += 1
+                continue
+            else:
+                penalty +=5
 
             # Check after
             if start_slot + duration >= len(self.class_list) or not self.class_list[start_slot + duration]:
-                points += 1
+                continue
+            else:
+                penalty += 5
 
             # Check slot overlap
-            overlap_penalty = 0
+            
             for i in range(start_slot, start_slot + duration):
                 if len(self.class_list[i]) > 1:
-                    overlap_penalty += 1
+                    penalty += 100
 
-            if overlap_penalty == 0:
-                points += 2  # clean
-            elif overlap_penalty == 1:
-                points += 0  # mild penalty
-            else:
-                points -= 1  # strong penalty
+            
 
-            first_score_total += points
-
-        first_part_score = first_score_total / (total_classes * max_points)
+           
 
         # Second Part: Schedule Spread (Late Starts + Early Finishes)
         second_score_total = 0
@@ -131,22 +147,18 @@ class Schedule:
         for day_start in range(0, len(self.class_list), slots_per_day):
             slots = self.class_list[day_start: day_start + slots_per_day]
 
-            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day // 10)
-            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day // 10)
+            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day/4)
+            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day/4)
             suffix = slots_per_day - suffix - 1  # Convert index from end
 
-            if prefix == slots_per_day // 10 and suffix == slots_per_day // 10:
-                # Empty day – prevent artificially high score
-                prefix = suffix = slots_per_day // 10
+            # if prefix == slots_per_day // 10 and suffix == slots_per_day // 10:
+            #     # Empty day – prevent artificially high score
+            #     prefix = suffix = slots_per_day // 10
 
             second_score_total += (prefix * 15) * ((slots_per_day - 1 - suffix) * 15)
 
         # Normalize second part (optional but improves stability)
-        max_time = (15 * slots_per_day) ** 2
-        second_part_score = second_score_total / (max_time * days / 4)
-
-        # Final score: product or weighted sum
-        fitness_score = first_part_score * 0.4 + 0.6 * second_part_score
+        fitness_score = second_score_total/ penalty
         # Or try weighted sum: 0.7 * first_part_score + 0.3 * second_part_score
 
         self.set_fitness_score(fitness_score)
@@ -168,12 +180,13 @@ class Schedule:
             self.fitness(all_clases)  # If we do not mutate, we still need to calculate the fitness score
             return
         # weight = random()
-        class_num = randint(1, len(all_clases)//4)
+        class_num = randint(len(all_clases)//18, len(all_clases)//4)
         # Will mutate 1 -  classes randomly
-        for i in range(class_num):
+        for _ in range(class_num):
             class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
             old_position = self.mapping[class_index]
+            block= old_position // self.block_size
 
             duration = all_clases[class_index].duration
             
@@ -181,64 +194,43 @@ class Schedule:
                 if class_index in self.class_list[i]:
                     self.class_list[i].remove(class_index)
 
-            block_id = randint(0, self.num_blocks - 1) # We choose a new spot in the schedule by picking out a block and then randomizing
-            block_start = block_id * self.block_size
-            block_end = block_start + self.block_size - duration
+            placed = False
+            tries = 0
+            random_start =random()
+            if random_start < 0.6:
+                random_s = False
+            else:
+                random_s = True
+            while not placed and tries < 100:
+                if random_s:
+                    block_id = randint(0, self.num_blocks - 1)  # first pick out a block
+                else:
+                    block_id = block
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - duration
+                new_position = randint(block_start, block_end)
+               # Check for overlap
+                overlap = False
+                for j in range(duration):
+                    if self.class_list[new_position + j]:
+                        overlap = True
+                        break
+                if not overlap:
+                    for j in range(duration):
+                        self.class_list[new_position + j].append(class_index)
+                    self.mapping[class_index] = new_position
+                    placed = True
+                tries += 1
+            if not placed:
+                block_id = randint(0, self.num_blocks - 1)   # first pick out a block
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - duration
 
-            new_position = randint(block_start, block_end) 
+                new_position = randint(block_start, block_end)
 
-            for j in range(new_position, new_position + duration):
-                self.class_list[j].append(class_index)
-
-            self.mapping[class_index] = new_position
-
-        # else:
-        #     p = randint(0, len(self.mapping) - 1)
-        #     q = randint(0, len(self.mapping) - 1)
-
-        #     if p == q:
-        #         if p == len(self.mapping) - 1:
-        #             p -= 2
-        #         p += 1
-
-        #     # Old positions for future reference
-        #     p_old = self.mapping[p]
-        #     q_old = self.mapping[q]
-
-        #     # First retrieve the duration of both classes from all_classes parameter
-        #     duration_p = all_clases[p].duration
-        #     duration_q = all_clases[q].duration
-
-        #     # Remove class 1, index p, from its' old position and add class 2, index q
-        #     for i in range(p_old, p_old + duration_p):
-        #         if p in self.class_list[i]:
-        #             self.class_list[i].remove(p)
-            
-        #     # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
-        #     if p_old + duration_q > len(self.class_list):
-        #         for slot in range(duration_q):
-        #             self.class_list[-1-slot].append(q)
-        #         self.mapping[q] = len(self.class_list) - duration_q
-        #     else:
-        #         for j in range(self.mapping[p], self.mapping[p] + duration_q):
-        #             self.class_list[j].append(q)
-        #         self.mapping[q] = p_old
-
-        #     # Remove class 2, index q, from its' old position and add class 1, index p
-        #     for k in range(self.mapping[q], self.mapping[q] + duration_q):
-        #         if q in self.class_list[k]:
-        #             self.class_list[k].remove(q)
-            
-        #     # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
-        #     if self.mapping[q] + duration_p > len(self.class_list):
-        #         for slot in range(duration_p):
-        #             self.class_list[-1-slot].append(p)
-        #         self.mapping[p] = len(self.class_list) - duration_p
-        #     else:
-        #         for j in range(self.mapping[q], self.mapping[q] + duration_p):
-        #             self.class_list[j].append(p)
-                
-        #         self.mapping[p] = q_old
+                for j in range(duration):
+                        self.class_list[new_position + j].append(class_index)
+                self.mapping[class_index] = new_position
 
         self.fitness(all_clases)
 
@@ -362,39 +354,55 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], 
     2 parents are combined to get 2 child Schedules.
 
     """
-    k = randint(0, len(parent1.mapping) - 1)
-
     class_count = len(parent1.mapping)
     room_count = len(parent1.class_list) // (12 * 4 * 5)
-    child1 = Schedule(class_count, room_count)
-    for i in range(k):
-        value = parent1.mapping.get(i, -1)
-        child1.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child1.class_list[value + j].append(i)
-    for i in range(k, class_count):
-        value = parent2.mapping.get(i, -1)
-        child1.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child1.class_list[value + j].append(i)
-    child2= Schedule(class_count, room_count)
-    for i in range(k):
-        value = parent2.mapping.get(i, -1)
-        child2.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child2.class_list[value + j].append(i)
-    for i in range(k, class_count):
-        value = parent1.mapping.get(i, -1)
-        child2.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child2.class_list[value + j].append(i)
 
-    child2.mutate(mutation_chance=mutations, all_clases=class_list)
-    child1.mutate(mutation_chance=mutations, all_clases=class_list)
-    # child1.fitness(class_list)
-    # child.fitness(class_list)
+    def build_child(preferred, fallback):
+        child = Schedule(class_count, room_count)
+        indices = list(range(class_count))
+        shuffle(indices)  # Shuffle to avoid bias
+        for i in indices:
+            placed = False
+            # Try preferred parent
+            for mapping in (preferred.mapping, fallback.mapping):
+                pos = mapping.get(i, -1)
+                duration = class_list[i].get_duration()
+                if pos == -1:
+                    continue
+                # Check if slots are free
+                if all(not child.class_list[pos + j] for j in range(duration)):
+                    for j in range(duration):
+                        child.class_list[pos + j].append(i)
+                    child.mapping[i] = pos
+                    placed = True
+                    break
+            if not placed:
+                # Try to find a random valid slot
+                tries = 0
+                while tries < 100:
+                    block_id = randint(0, child.num_blocks - 1)
+                    block_start = block_id * child.block_size
+                    block_end = block_start + child.block_size - duration
+                    rand_pos = randint(block_start, block_end)
+                    if all(not child.class_list[rand_pos + j] for j in range(duration)):
+                        for j in range(duration):
+                            child.class_list[rand_pos + j].append(i)
+                        child.mapping[i] = rand_pos
+                        placed = True
+                        break
+                    tries += 1
+                if not placed:
+                    # As a last resort, place anyway (may overlap, but rare)
+                    for j in range(duration):
+                        child.class_list[rand_pos + j].append(i)
+                    child.mapping[i] = rand_pos
+        return child
+
+        # Child 1: prefer parent1, fallback to parent2
+    child1 = build_child(parent1, parent2)
+        # Child 2: prefer parent2, fallback to parent1
+    child2 = build_child(parent2, parent1)
+
+    child1.mutate(mutations, class_list)
+    child2.mutate(mutations, class_list)
     return child1, child2
