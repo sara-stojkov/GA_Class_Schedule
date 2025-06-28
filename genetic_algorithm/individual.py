@@ -92,7 +92,7 @@ class Schedule:
         """
 
         first_score_total = 0
-        max_points = 4  # max per class: 1+1+2
+        max_points = 6  # max per class: 1+1+2
         total_classes = len(self.mapping)
 
         # First Part: Schedule Validity
@@ -102,11 +102,11 @@ class Schedule:
 
             # Check before
             if start_slot == 0 or not self.class_list[start_slot - 1]:
-                points += 1
+                points += 2
 
             # Check after
             if start_slot + duration >= len(self.class_list) or not self.class_list[start_slot + duration]:
-                points += 1
+                points += 2
 
             # Check slot overlap
             overlap_penalty = 0
@@ -148,103 +148,89 @@ class Schedule:
         second_part_score = second_score_total / (max_time * days / 4)
 
         # Final score: product or weighted sum
-        fitness_score = first_part_score * 0.4 + 0.6 * second_part_score
+        fitness_score = first_part_score * 0.6 + 0.4 * second_part_score
         # Or try weighted sum: 0.7 * first_part_score + 0.3 * second_part_score
 
         self.set_fitness_score(fitness_score)
     
-    # In the future possibly change more than 2 classes
-    # In future changes should be more heavy to introduce variance
-    def mutate(self, mutation_chance: int, all_clases: list[Subject]):
+    def mutate(self, mutation_chance: int, all_classes: list[Subject]):
         """Function that handles the mutation of an individual.
            Based on a predefined mutation_chance, the function determines whether a mutation will happen.
            A mutation is defined as picking a random number n of classes (from 1 to a quarter of population size),
            then placing each of those n classes in a randomly picked timeslot. 
            By doing so, variability is increased and this is also a try to escape uniformness.
            """
-        
-        mutation_happens = random()
-        # The principle is the following: We generate a random number between 0 and 1. Then we compare that number to the parameter
-        # mutation_chance - if the random number is smaller than mutation chance then we mutate the individual. Otherwise, we exit this function,
-        # which is what is implemented below
-        if mutation_happens > mutation_chance:
-            self.fitness(all_clases)  # If we do not mutate, we still need to calculate the fitness score
+        if random() > mutation_chance:
+            self.fitness(all_classes)
             return
-        # weight = random()
-        class_num = randint(1, len(all_clases)//4)
-        # Will mutate 1 -  classes randomly
-        for i in range(class_num):
-            class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
-            old_position = self.mapping[class_index]
+        num_classes = len(all_classes)
 
-            duration = all_clases[class_index].duration
-            
-            for i in range(old_position, old_position + duration):
-                if class_index in self.class_list[i]:
-                    self.class_list[i].remove(class_index)
+        # pick random number of classes to mutate: sometimes 1, sometimes up to 33% of classes
+        n_mutate = randint(1, max(1, num_classes // 3))
 
-            block_id = randint(0, self.num_blocks - 1) # We choose a new spot in the schedule by picking out a block and then randomizing
-            block_start = block_id * self.block_size
-            block_end = block_start + self.block_size - duration
+        for _ in range(n_mutate):
+            mutation_type = random()
 
-            new_position = randint(block_start, block_end) 
+            if mutation_type < 0.5:
+                # relocate a random class
+                class_index = randint(0, num_classes - 1)
+                old_pos = self.mapping[class_index]
+                duration = all_classes[class_index].duration
 
-            for j in range(new_position, new_position + duration):
-                self.class_list[j].append(class_index)
+                # remove it from current location
+                for i in range(old_pos, old_pos + duration):
+                    if class_index in self.class_list[i]:
+                        self.class_list[i].remove(class_index)
 
-            self.mapping[class_index] = new_position
+                # pick a *nearby* block to encourage local exploration
+                current_block = old_pos // self.block_size
+                block_id = current_block + randint(-1, 1)
+                block_id = max(0, min(block_id, self.num_blocks - 1))
 
-        # else:
-        #     p = randint(0, len(self.mapping) - 1)
-        #     q = randint(0, len(self.mapping) - 1)
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - duration
 
-        #     if p == q:
-        #         if p == len(self.mapping) - 1:
-        #             p -= 2
-        #         p += 1
+                new_pos = randint(block_start, block_end)
 
-        #     # Old positions for future reference
-        #     p_old = self.mapping[p]
-        #     q_old = self.mapping[q]
+                for i in range(new_pos, new_pos + duration):
+                    self.class_list[i].append(class_index)
+                self.mapping[class_index] = new_pos
 
-        #     # First retrieve the duration of both classes from all_classes parameter
-        #     duration_p = all_clases[p].duration
-        #     duration_q = all_clases[q].duration
+            else:
+                # swap two classes
+                p = randint(0, num_classes - 1)
+                q = randint(0, num_classes - 1)
+                if p == q:
+                    continue
+                pos_p = self.mapping[p]
+                pos_q = self.mapping[q]
+                dur_p = all_classes[p].duration
+                dur_q = all_classes[q].duration
 
-        #     # Remove class 1, index p, from its' old position and add class 2, index q
-        #     for i in range(p_old, p_old + duration_p):
-        #         if p in self.class_list[i]:
-        #             self.class_list[i].remove(p)
-            
-        #     # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
-        #     if p_old + duration_q > len(self.class_list):
-        #         for slot in range(duration_q):
-        #             self.class_list[-1-slot].append(q)
-        #         self.mapping[q] = len(self.class_list) - duration_q
-        #     else:
-        #         for j in range(self.mapping[p], self.mapping[p] + duration_q):
-        #             self.class_list[j].append(q)
-        #         self.mapping[q] = p_old
+                # check if swap would exceed schedule bounds
+                if (pos_q + dur_p > len(self.class_list)) or (pos_p + dur_q > len(self.class_list)):
+                    continue  # swap is impossible
 
-        #     # Remove class 2, index q, from its' old position and add class 1, index p
-        #     for k in range(self.mapping[q], self.mapping[q] + duration_q):
-        #         if q in self.class_list[k]:
-        #             self.class_list[k].remove(q)
-            
-        #     # Handles the case that one longer class is swapped with a shorter one not to cause index out of range
-        #     if self.mapping[q] + duration_p > len(self.class_list):
-        #         for slot in range(duration_p):
-        #             self.class_list[-1-slot].append(p)
-        #         self.mapping[p] = len(self.class_list) - duration_p
-        #     else:
-        #         for j in range(self.mapping[q], self.mapping[q] + duration_p):
-        #             self.class_list[j].append(p)
-                
-        #         self.mapping[p] = q_old
+                # remove both from current spots
+                for i in range(pos_p, pos_p + dur_p):
+                    if p in self.class_list[i]:
+                        self.class_list[i].remove(p)
+                for i in range(pos_q, pos_q + dur_q):
+                    if q in self.class_list[i]:
+                        self.class_list[i].remove(q)
 
-        self.fitness(all_clases)
+                # place p at q's slot
+                for i in range(pos_q, pos_q + dur_p):
+                    self.class_list[i].append(p)
+                self.mapping[p] = pos_q
 
+                # place q at p's slot
+                for i in range(pos_p, pos_p + dur_q):
+                    self.class_list[i].append(q)
+                self.mapping[q] = pos_p
+
+        self.fitness(all_classes)
 
     def __repr__(self):
         return f"Schedule(class_list={self.class_list}, mapping={self.mapping}, fitness_score={self.fitness_score})"
@@ -277,7 +263,7 @@ class Schedule:
             print("*****************************")
 
 
-    def write_schedule_to_html(self, classes: list[Subject], rooms, days, filename: str):
+    def write_schedule_to_html(self, classes: list[Subject], rooms, days, filename: str, population_size:int , mutation_chance:int, max_gen: int):
         """
         Write the schedule to an HTML file in a clear table format:
         - Each day has a separate table.
@@ -305,6 +291,7 @@ class Schedule:
             "</head>",
             "<body>",
             f"<h1>Raspored za SIIT (Fitness Score: {self.get_fitness_score():.2f})</h1>",
+            f"<h2>Veličina populacije: {population_size}, broj generacija: {max_gen}, šansa za mutacije: {mutation_chance} </h2>"
         ]
 
         # For each day, create a table
@@ -362,46 +349,61 @@ class Schedule:
         return True
 
 
-def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: int) -> Schedule:
+def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: int) -> tuple[Schedule, Schedule]:
     """
-    Performs crossover between two schedules.
-    This is done by combining the class list of twi schedules.
-    2 parents are combined to get 2 child Schedules.
-
+    Performs two-point crossover between two parents to produce two children.
     """
-    k = randint(0, len(parent1.mapping) - 1)
-
     class_count = len(parent1.mapping)
     room_count = len(parent1.class_list) // (12 * 4 * 5)
     child1 = Schedule(class_count, room_count)
-    for i in range(k):
+    child2 = Schedule(class_count, room_count)
+
+    # pick two random crossover points
+    k1 = randint(0, class_count // 2)
+    k2 = randint(class_count // 2, class_count - 1)
+
+    # Child 1
+    for i in range(k1):
         value = parent1.mapping.get(i, -1)
         child1.mapping[i] = value
         duration = class_list[i].get_duration()
         for j in range(duration):
             child1.class_list[value + j].append(i)
-    for i in range(k, class_count):
+    for i in range(k1, k2):
         value = parent2.mapping.get(i, -1)
         child1.mapping[i] = value
         duration = class_list[i].get_duration()
         for j in range(duration):
             child1.class_list[value + j].append(i)
-    child2= Schedule(class_count, room_count)
-    for i in range(k):
+    for i in range(k2, class_count):
+        value = parent1.mapping.get(i, -1)
+        child1.mapping[i] = value
+        duration = class_list[i].get_duration()
+        for j in range(duration):
+            child1.class_list[value + j].append(i)
+
+    # Child 2
+    for i in range(k1):
         value = parent2.mapping.get(i, -1)
         child2.mapping[i] = value
         duration = class_list[i].get_duration()
         for j in range(duration):
             child2.class_list[value + j].append(i)
-    for i in range(k, class_count):
+    for i in range(k1, k2):
         value = parent1.mapping.get(i, -1)
+        child2.mapping[i] = value
+        duration = class_list[i].get_duration()
+        for j in range(duration):
+            child2.class_list[value + j].append(i)
+    for i in range(k2, class_count):
+        value = parent2.mapping.get(i, -1)
         child2.mapping[i] = value
         duration = class_list[i].get_duration()
         for j in range(duration):
             child2.class_list[value + j].append(i)
 
-    child2.mutate(mutation_chance=mutations, all_clases=class_list)
-    child1.mutate(mutation_chance=mutations, all_clases=class_list)
-    # child1.fitness(class_list)
-    # child.fitness(class_list)
+    # mutate both children
+    child1.mutate(mutations, class_list)
+    child2.mutate(mutations, class_list)
+
     return child1, child2

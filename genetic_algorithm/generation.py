@@ -105,7 +105,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     # current_gen[0].nice_print()    
     current_gen[0].no_overlap()
 
-    current_gen[0].write_schedule_to_html(classes, rooms, days, "schedules/vecagen.html")
+    current_gen[0].write_schedule_to_html(classes, rooms, days, "schedules/jace_mutacije.html", population_size, mutation_chance, max_generations)
     return current_gen[0]  # This is the best schedule by fitness
 
 
