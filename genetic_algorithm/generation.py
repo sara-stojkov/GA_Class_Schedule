@@ -38,12 +38,7 @@ def roulette_parent_selection(generation: list[Schedule]):
 
 def crossover_all(generation: list[Schedule], population_size: int, mutation_chance: int, classes: list[Subject]):
     """Breeds individuals (Schedules) which passed the selection (previous step in life cycle)"""
-    passed_selection = len(generation)
     while len(generation) < 2 * population_size:
-        # Roulette selection of parents
-
-        # parent1 = randint(0, passed_selection - 1)
-        # parent2 = randint(0, passed_selection - 1)
         parent1, parent2 = roulette_parent_selection(generation=generation)
         child1, child2 = cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes, mutations = mutation_chance)
 
@@ -52,16 +47,6 @@ def crossover_all(generation: list[Schedule], population_size: int, mutation_cha
 
     return generation
      
-# def mutations(generation: list[Schedule], mutation_chance, classes):
-#     """Function that handles calling the mutate function in cases it needs to be called"""
-    
-#     for individual in generation:
-#         chance = random()
-
-#         if chance <= mutation_chance:
-#             individual.mutate(classes)
-
-#     return generation
 
 def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance,rooms):
     """This is the main function that will do the genetic algorithm on populations, where the algorithm consists of:
@@ -79,7 +64,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     generation_index = 1
     max_fitness = 0
 
-    while not (generation_index == max_generations + 1 or abs(max_fitness - best_fitness) < stopping_criteria):
+    while not (generation_index == max_generations + 1 or (best_fitness - max_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
         max_fitness = current_gen[0].get_fitness_score()
         if generation_index< max_generations/2:
@@ -91,16 +76,15 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
         current_gen = crossover_all(current_gen, population_size, mu, classes) # Crossover includes mutations of children
         current_gen = selection(current_gen, selection_parameter, population_size)
 
-        # current_gen = mutations(current_gen, mutation_chance, classes)
         generation_index += 1
 
     current_gen = selection(current_gen, selection_parameter,population_size) # called to sort the population by fitness
-    print("\n\nBEST BEBA")
+    print("\n\nBEST SCHEDULE:")
     time.sleep(1)
-    # current_gen[0].nice_print()    
+    #Check if the best schedule has no overlaps
     current_gen[0].no_overlap()
 
-    current_gen[0].write_schedule_to_html(classes, "schedules/probni4.html")
+    current_gen[0].write_schedule_to_html(classes, "schedules/probni4.html", generation=generation_index, mutation=mutation_chance, keepPercent=selection_parameter)
     return current_gen[0]  # This is the best schedule
 
 

@@ -2,7 +2,7 @@ DAYS = ["Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota", "Nedelj
 DAYS_NUM = 5
 FILE_PATH = "data_timetable.txt"
 POPULATION_SIZE = 100
-MUTATION_CHANCE = [0.5,0.3,0.2]
+MUTATION_CHANCE = [0.4,0.3,0.2]
 KEEP_PERCENT = 0.2
 MAX_GENERATIONS = 3000
 

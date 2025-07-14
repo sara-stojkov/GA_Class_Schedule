@@ -1,19 +1,16 @@
-from reading_data import load_data
+from reading_data import load_data, load_data_from_string
 from genetic_algorithm.generation import life_cycle
 from const import MAX_GENERATIONS, MUTATION_CHANCE, POPULATION_SIZE, KEEP_PERCENT, FILE_PATH
 
 def main():
-    rooms, events = load_data(FILE_PATH)
+    # Load data from the string instead of a file
+    # Uncomment the next line to load from a file and comment the line below
 
-    print("Rooms:")
-    for room_id, room_name in rooms.items():
-        print(f"  {room_id}: {room_name}")
+    # rooms, events = load_data(FILE_PATH)
+    rooms, events = load_data_from_string()
 
-    print("\nEvents:")
-    for event in events:
-        print(event)
 
-    life_cycle(max_generations=MAX_GENERATIONS, best_fitness=1000000000, stopping_criteria=0.1, classes=events, 
+    life_cycle(max_generations=MAX_GENERATIONS, best_fitness=1300000, stopping_criteria=0.1, classes=events, 
                population_size=POPULATION_SIZE, selection_parameter=KEEP_PERCENT, mutation_chance=MUTATION_CHANCE,rooms=rooms)
 
 
