@@ -146,16 +146,24 @@ class Schedule:
 
         for day_start in range(0, len(self.class_list), slots_per_day):
             slots = self.class_list[day_start: day_start + slots_per_day]
+            p1=1
+            p2=0
 
-            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day/4)
-            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day/4)
+            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day)
+            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day)
             suffix = slots_per_day - suffix - 1  # Convert index from end
 
-            # if prefix == slots_per_day // 10 and suffix == slots_per_day // 10:
-            #     # Empty day – prevent artificially high score
-            #     prefix = suffix = slots_per_day // 10
+            if prefix == slots_per_day or suffix == slots_per_day:
+                p1 = 0
 
-            second_score_total += (prefix * 15) * ((slots_per_day - 1 - suffix) * 15)
+            # Penalize if the last class ends in the last eighth of the day
+            # or if the first class starts in the first eighth of the day
+            # eighth = slots_per_day // 8
+            if suffix >= slots_per_day//10:
+                p2 -= 10000  # Penalize if the last class ends late or first class starts early
+            if prefix < slots_per_day//10:
+                p2 -= 10000  # Penalize if the last class ends late or first class starts early
+            second_score_total += (prefix * 15) * ((slots_per_day - 1 - suffix) * 15)*p1 +p2  # Convert slots to minutes
 
         # Normalize second part (optional but improves stability)
         fitness_score = second_score_total/ penalty
@@ -196,16 +204,17 @@ class Schedule:
 
             placed = False
             tries = 0
-            random_start =random()
-            if random_start < 0.6:
-                random_s = False
-            else:
-                random_s = True
+            # random_start =random()
+            # if random_start < 0.6:
+            #     random_s = False
+            # else:
+            #     random_s = True
             while not placed and tries < 100:
-                if random_s:
-                    block_id = randint(0, self.num_blocks - 1)  # first pick out a block
-                else:
-                    block_id = block
+                # if random_s:
+                #     block_id = randint(0, self.num_blocks - 1)  # first pick out a block
+                # else:
+                #     block_id = block
+                block_id = block  # first pick out a block
                 block_start = block_id * self.block_size
                 block_end = block_start + self.block_size - duration
                 new_position = randint(block_start, block_end)
