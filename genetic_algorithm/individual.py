@@ -102,8 +102,7 @@ class Schedule:
           If a class is scheduled in an invalid slot, it will be penalized.
         Second:
         - Schedule Spread: Checks if the classes are spread evenly throughout the day.
-          If the first class starts too early or the last class ends too late, it will be
-            penalized. The score is calculated based on the time slots used and the spread of classes.
+          The score is calculated based on the time slots used and the spread of classes.
 
         :param all_class: The list of classes to calculate the fitness score for.
         """
@@ -135,31 +134,23 @@ class Schedule:
 
 
         # Second Part: Schedule Spread (Late Starts + Early Finishes)
-        second_score_total = 0
+        total_score = 0
         slots_per_day = 12 * 4  # 12 hours * 4 = 48 slots/day
 
         for day_start in range(0, len(self.class_list), slots_per_day):
             slots = self.class_list[day_start: day_start + slots_per_day]
             p1=1
-            p2=0
 
             prefix = next((i for i, s in enumerate(slots) if s), slots_per_day)
             suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day)
-            suffix = slots_per_day - suffix - 1  # Convert index from end
-
+            
+            # If the prefix or suffix is equal to slots_per_day, it means that there are no classes scheduled in that day
             if prefix == slots_per_day or suffix == slots_per_day:
                 p1 = 0
 
-            # Penalize if the last class ends in the last eighth of the day
-            # or if the first class starts in the first eighth of the day
-            # eighth = slots_per_day // 8
-            # if suffix >= slots_per_day//10:
-            #     p2 -= 10000  # Penalize if the last class ends late or first class starts early
-            # if prefix < slots_per_day//10:
-            #     p2 -= 10000  # Penalize if the last class ends late or first class starts early
-            second_score_total += (prefix * 15) * ((slots_per_day - 1 - suffix) * 15)*p1 +p2  # Convert slots to minutes
+            total_score += (prefix * 15) * ((suffix) * 15) * p1  # Convert slots to minutes
 
-        fitness_score = second_score_total/ penalty
+        fitness_score = total_score/ penalty
 
         self.set_fitness_score(fitness_score)
     
@@ -181,8 +172,8 @@ class Schedule:
             self.fitness(all_clases)  # If we do not mutate, we still need to calculate the fitness score
             return
 
-        class_num = randint(len(all_clases)//15, len(all_clases)//4)
-        # Will mutate {class_num} classes randomly, from 1/15 to 1/4 of all classes so it also randomizes the mutation strength
+        class_num = randint(len(all_clases)//16, len(all_clases)//4)
+        # Will mutate {class_num} classes randomly, from 1/16 to 1/4 of all classes so it also randomizes the mutation strength
         for _ in range(class_num):
             class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 

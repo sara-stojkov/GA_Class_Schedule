@@ -112,12 +112,12 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
         max_fitness = current_gen[0].get_fitness_score()
         # Has variant mutation chance based on generation number
         if generation_index< max_generations/2:
-            mu = mutation_chance[0]
+            mutatation = mutation_chance[0]
         elif generation_index < max_generations * 0.75:
-            mu = mutation_chance[1]
+            mutatation = mutation_chance[1]
         else:
-            mu = mutation_chance[2]
-        current_gen = crossover_all(current_gen, population_size, mu, classes) # Crossover includes mutations of children
+            mutatation = mutation_chance[2]
+        current_gen = crossover_all(current_gen, population_size, mutatation, classes) # Crossover includes mutations of children
         current_gen = selection(current_gen, selection_parameter, population_size)
 
         generation_index += 1
