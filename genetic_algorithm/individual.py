@@ -48,7 +48,7 @@ class Schedule:
         """Sets the fitness score of the schedule."""
         self.fitness_score = score
 
-    def set_random_classes(self, class_number: int, room_number: int, classes: list[Subject]):
+    def set_random_classes(self, class_number: int, classes: list[Subject]):
         """
         Used for randomizing an individual Schedule, used in creating the first generation.
         Iterates through all the classes and assignes them to a random timeslot (15 minutes) and classroom, according to Schedule structure. 

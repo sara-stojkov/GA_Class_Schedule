@@ -17,7 +17,7 @@ def generate_first_gen(classes, population_size, room_number):
     generation_list = []
     for i in range (population_size):
             current_individual = Schedule(len(classes), room_number)
-            current_individual.set_random_classes(len(classes), room_number, classes)
+            current_individual.set_random_classes(len(classes), classes)
             generation_list.append(current_individual)
         
     return generation_list
@@ -107,7 +107,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     max_fitness = 0
 
     # The main loop of the genetic algorithm
-    while not (generation_index == max_generations + 1 or (best_fitness - max_fitness) < stopping_criteria):
+    while not (generation_index == max_generations or (best_fitness - max_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
         max_fitness = current_gen[0].get_fitness_score()
         # Has variant mutation chance based on generation number
@@ -125,7 +125,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     current_gen.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())  # Sort the generation by fitness score
     # After sorting, the best Schedule by its fitness score is the first one in the list 
     print("\n\nBEST SCHEDULE:")
-    time.sleep(1)
+    print("Fitness score:", current_gen[0].get_fitness_score())
     # Check if the best schedule has no overlaps
     current_gen[0].no_overlap()
 

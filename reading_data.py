@@ -63,6 +63,7 @@ Uvod u softversko inzenjerstvo - Vezbe 3, 60
 Internet mreze - Vezbe 3, 180
 Matematicka analiza - Vezbe 3, 60"""
 
+# Loading data from a string, added to prevent issues with file paths in different environments
 def load_data_from_string():
     lines = data_timetable_txt.strip().split('\n')
 
@@ -81,7 +82,7 @@ def load_data_from_string():
     
     return rooms, events
 
-
+# Loading data from a file
 def load_data(file_path):
     with open(file_path, 'r') as file:
         lines= file.readlines()
