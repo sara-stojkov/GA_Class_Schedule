@@ -29,6 +29,7 @@ def selection(generation: list[Schedule], selection_percent, population_size):
     
 
 def roulette_parent_selection(generation: list[Schedule]):
+    """Favors the best Schedules in the population, but allows for some randomization"""
     generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
     schedule_ranking = list(range(len(generation), 0, -1))
     random_scores = [random() for _ in range(len(schedule_ranking))]
@@ -81,7 +82,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     current_gen = selection(current_gen, selection_parameter,population_size) # called to sort the population by fitness
     print("\n\nBEST SCHEDULE:")
     time.sleep(1)
-    #Check if the best schedule has no overlaps
+    # Check if the best schedule has no overlaps
     current_gen[0].no_overlap()
 
     current_gen[0].write_schedule_to_html(classes, "schedules/probni4.html", generation=generation_index, mutation=mutation_chance, keepPercent=selection_parameter)
