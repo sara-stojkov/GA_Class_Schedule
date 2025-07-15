@@ -17,12 +17,16 @@ class Schedule:
     """
     __slots__ = ('class_list', 'mapping', 'fitness_score', 'num_blocks', 'block_size')
     def __init__(self, class_count: int, room_count: int):
-        # Initialize the schedule where the time slots are represented as a list of lists.
-        # Each sublist corresponds to a time slot (12 hours * 4 quarters * 5 days * room_count).
+        """
+        Initializes a Schedule object with the given number of classes and rooms. The time slots are represented as a list of lists,
+        where each sublist corresponds to a time slot (12 hours * 4 quarters * 5 days * room_count).
+        Besides the list, each Schedule has a mapping.
+        The mapping is a dictionary where the key is the class index and the value is -1 (indicating no class scheduled).
+        The mapping will be updated when classes are added to the schedule.
+        :param class_count: The number of classes in the schedule.
+        :param room_count: The number of rooms in the schedule."""
+        
         self.class_list = [[] for _ in range(12 * 4 * 5 * room_count)]
-        # Initialize the mapping of classes to their indices.
-        # The mapping is a dictionary where the key is the class index and the value is -1 (indicating no class scheduled).
-        # The mapping will be updated when classes are added to the schedule.
         self.mapping = {i: -1 for i in range(class_count)}
         self.fitness_score = -1
         self.num_blocks = 5 * room_count  # We have 5 work days and n rooms, so each combination of these is one block
@@ -50,11 +54,18 @@ class Schedule:
         Iterates through all the classes and assignes them to a random timeslot (15 minutes) and classroom, according to Schedule structure. 
         Adding a class to the schedule is done by appending it to the class_list and updating the mapping
         and checking for overlaps, if any occur the class will be placed in a different slot.
+
+        :param class_number: The number of classes to be scheduled.
+        :param room_number: The number of rooms available for scheduling.
+        :param classes: The list of classes to be scheduled.
         """
         for i in range(class_number):
+            # For each class, we try to place it in a random time slot
+            # We will try to place it in a random time slot, if it overlaps with another class, we will try again
             placed = False
             tries = 0
             while not placed and tries < 100:
+                # Pick a random block (day and room) and place a random class in it
                 block_id = randint(0, self.num_blocks - 1)
                 block_start = block_id * self.block_size
                 block_end = block_start + self.block_size - classes[i].duration
@@ -153,10 +164,13 @@ class Schedule:
         self.set_fitness_score(fitness_score)
     
     
-    def mutate(self, mutation_chance: int, all_clases: list[Subject]):
+    def mutate(self, mutation_chance: float, all_clases: list[Subject]):
         """Funtion that handles the mutation of an individual.
         It randomly selects a class and tries to move it to a different time slot,
         in the same block (same day and room), if possible.
+
+        :param mutation_chance: The chance of mutation happening, a number between 0 and 1.
+        :param all_clases: The list of classes to be scheduled.
            """
         
         mutation_happens = random()
@@ -166,9 +180,9 @@ class Schedule:
         if mutation_happens > mutation_chance:
             self.fitness(all_clases)  # If we do not mutate, we still need to calculate the fitness score
             return
-        
-        class_num = randint(len(all_clases)//18, len(all_clases)//4)
-        # Will mutate class_num classes randomly
+
+        class_num = randint(len(all_clases)//15, len(all_clases)//4)
+        # Will mutate {class_num} classes randomly, from 1/15 to 1/4 of all classes so it also randomizes the mutation strength
         for _ in range(class_num):
             class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
@@ -219,7 +233,8 @@ class Schedule:
         return f"Schedule: {self.class_list}, {self.mapping}, {self.fitness_score}"
     
     def nice_print(self):
-        """Prints the schedule in a nice format in console, showing the classes scheduled in each time slot."""
+        """Prints the schedule in a nice format in console, showing the classes scheduled in each time slot.
+        Used for debugging and visualization purposes."""
         print("\n-------------------------------")
         print("SCHEDULE BY DAYS AND ROOMS:\n")
 
@@ -254,6 +269,7 @@ class Schedule:
         hours_per_day = 12
         slots_per_day_per_room = slots_per_hour * hours_per_day  # 48
         days_per_week = 5
+        # Calculate the number of rooms based on the class_list length
         num_rooms = len(self.class_list) // (slots_per_day_per_room * days_per_week)
 
         html = [
@@ -274,7 +290,7 @@ class Schedule:
 
         ]
 
-        # For each day, create a table
+        # For each day, creates a table
         for day in range(days_per_week):
             html.append(f"<h2>Day {day + 1}</h2>")
             html.append("<table>")
@@ -320,17 +336,23 @@ class Schedule:
         """Check if the schedule has no overlaps and print a message accordingly."""
 
         for list in self.class_list:
+            # Each list should contain at most one class index, if it contains more than one, there is an overlap
             if len(list) > 1:
                 print("OVERLAP!!!!!!!! NOT GOOD!!!!")
-                return
+                return False
         
         print("\n YAYYYYYY NO OVERLAP, VALID SCHEDULE!!!! \n   >>>>>>>>>>>>>>>")
+        return True
 
-
-def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: int):
+def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: float):
     """
     Performs crossover between two schedules using three-point crossover.
     If preferred parent's position is invalid, FORCE the fallback parent's position.
+
+    :param parent1: The first parent Schedule.
+    :param parent2: The second parent Schedule.
+    :param class_list: The list of classes to be scheduled.
+    :param mutations: The mutation chance for the children schedules.
     """
     class_count = len(parent1.mapping)
     room_count = len(parent1.class_list) // (12 * 4 * 5)
