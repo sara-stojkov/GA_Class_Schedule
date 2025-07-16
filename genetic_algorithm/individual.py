@@ -130,7 +130,7 @@ class Schedule:
             
             for i in range(start_slot, start_slot + duration):
                 if len(self.class_list[i]) > 1:
-                    penalty += 100
+                    penalty += 1000
 
 
         # Second Part: Schedule Spread (Late Starts + Early Finishes)
