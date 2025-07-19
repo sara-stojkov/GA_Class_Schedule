@@ -89,10 +89,10 @@ class Schedule:
                 self.class_list[random_class_index + j].append(i) 
             self.mapping[i] = random_class_index
 
-        self.fitness(classes)
+        self.calculate_fitness(classes)
 
 
-    def fitness(self, all_class: list[Subject]) -> None:
+    def calculate_fitness(self, all_class: list[Subject]) -> None:
         """
         Calculates the fitness score of a schedule.
         The fitness score is a measure of how well the schedule meets the requirements.
@@ -155,7 +155,7 @@ class Schedule:
         self.set_fitness_score(fitness_score)
     
     
-    def mutate(self, mutation_chance: float, all_clases: list[Subject]):
+    def mutate(self, mutation_chance: float, all_classes: list[Subject]):
         """Funtion that handles the mutation of an individual.
         It randomly selects a class and tries to move it to a different time slot,
         in the same block (same day and room), if possible.
@@ -169,19 +169,19 @@ class Schedule:
         # mutation_chance - if the random number is smaller than mutation chance then we mutate the individual. Otherwise, we exit this function,
         # which is what is implemented below
         if mutation_happens > mutation_chance:
-            self.fitness(all_clases)  # If we do not mutate, we still need to calculate the fitness score
+            self.calculate_fitness(all_classes)  # If we do not mutate, we still need to calculate the fitness score
             return
 
-        class_num = randint(len(all_clases)//16, len(all_clases)//4)
-        # Will mutate {class_num} classes randomly, from 1/16 to 1/4 of all classes so it also randomizes the mutation strength
+        class_num = randint(len(all_classes)//16, len(all_classes)//4)
+        # Will mutate {class_num} classes randomly, from 1/16 to 1/4 of all classes so it also randomizes the mutation weight
         for _ in range(class_num):
             class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
             old_position = self.mapping[class_index]
             block= old_position // self.block_size
 
-            duration = all_clases[class_index].duration
-            
+            duration = all_classes[class_index].duration
+
             # Remove the class from the old position
             for i in range(old_position, old_position + duration):
                 if class_index in self.class_list[i]:
@@ -214,7 +214,7 @@ class Schedule:
                 self.class_list[new_position + j].append(class_index)
             self.mapping[class_index] = new_position
 
-        self.fitness(all_clases)
+        self.calculate_fitness(all_classes)
 
 
     def __repr__(self):
@@ -223,6 +223,7 @@ class Schedule:
     def __str__(self):
         return f"Schedule: {self.class_list}, {self.mapping}, {self.fitness_score}"
     
+    # function was used for debugging and visualization purposes before implementing the HTML output
     def nice_print(self):
         """Prints the schedule in a nice format in console, showing the classes scheduled in each time slot.
         Used for debugging and visualization purposes."""
@@ -247,7 +248,7 @@ class Schedule:
                 print("  -------------------------")
             print("*****************************")
 
-
+    # adding constant of days numbers and room names would have been an easy update, but the print is in English
     def write_schedule_to_html(self, classes: list[Subject], filename: str, generation: int = 0, mutation: list[float] = [0.5, 0.3, 0.2], keepPercent: float = 0.2):
         """
         Write the schedule to an HTML file in a clear table format:

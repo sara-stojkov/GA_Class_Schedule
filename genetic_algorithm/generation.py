@@ -14,13 +14,13 @@ def generate_first_gen(classes, population_size, room_number):
     :param room_number: The number of rooms available for scheduling.
 
     :return: A list of Schedule objects representing the first generation of individuals."""
-    generation_list = []
+    generation = []  # A generation is a list of Schedule objects, so this list is the first generation
     for i in range (population_size):
-            current_individual = Schedule(len(classes), room_number)
-            current_individual.set_random_classes(len(classes), classes)
-            generation_list.append(current_individual)
+            current_individual = Schedule(len(classes), room_number) # Intialize a new Schedule object with the number of classes and rooms
+            current_individual.set_random_classes(len(classes), classes) # Assign random classes to the Schedule object
+            generation.append(current_individual) # Add the Schedule to the generation list
         
-    return generation_list
+    return generation
 
 
 # Implements elitism - only a few schedules from current gen can survive, we fill the new gen with only children
@@ -35,7 +35,7 @@ def selection(generation: list[Schedule], selection_percent, population_size):
     :return: The new generation of Schedules after selection."""
     num_parents= int(selection_percent * population_size)  # How many parents will survive to the next generation
     surviving_schedules = generation[:num_parents]  # Take the best Schedules from the current generation
-    children = generation[population_size:]  # The children that were created in the crossover step
+    children = generation[population_size:]  # The children that were created in the crossover step, they are after the parents in the generation list
     children.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())  # Sort children by fitness score 
     generation = surviving_schedules + children[:population_size - num_parents]  # Fill the new generation with the best children
     generation.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score()) # Sort the new generation by fitness score
@@ -69,7 +69,8 @@ def crossover_all(generation: list[Schedule], population_size: int, mutation_cha
 
     :return: The new generation of Schedules after crossover and mutation."""
 
-    # The generation will be filled with {population_size} parents so we add {population_size} children to select from
+    # The generation will be filled with {population_size} parents so we add {population_size} children to do the selection from,
+    # so the new generation will have 2 * population_size individuals
     while len(generation) < 2 * population_size:
         parent1, parent2 = roulette_parent_selection(generation=generation)
         child1, child2 = cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes, mutations = mutation_chance)
@@ -91,7 +92,7 @@ def life_cycle(max_generations, optimal_fitness, stopping_criteria, classes, pop
             3. Recalculating fitness upon the population
         
     :param max_generations: The maximum number of generations to run the algorithm for.
-    :param optimal_fitness: The fitness score of the "ideal" Schedule which has not yet been reached with the algorithm.
+    :param optimal_fitness: The fitness score of the "ideal" Schedule which has not yet been reached with the algorithm, chosen based on previous results.
     :param stopping_criteria: The minimum difference between the best fitness and the current maximum fitness
     :param classes: List of Subject objects representing the classes to be scheduled.
     :param population_size: The total number of Schedules in the population.
@@ -110,7 +111,7 @@ def life_cycle(max_generations, optimal_fitness, stopping_criteria, classes, pop
     while not (generation_index == max_generations or (optimal_fitness - max_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
         max_fitness = current_gen[0].get_fitness_score()
-        # Has variant mutation chance based on generation number
+        # Variant mutation chance based on generation number
         if generation_index< max_generations/2:
             mutatation = mutation_chance[0]
         elif generation_index < max_generations * 0.75:
@@ -118,7 +119,7 @@ def life_cycle(max_generations, optimal_fitness, stopping_criteria, classes, pop
         else:
             mutatation = mutation_chance[2]
         current_gen = crossover_all(current_gen, population_size, mutatation, classes) # Crossover includes mutations of children
-        current_gen = selection(current_gen, selection_parameter, population_size)
+        current_gen = selection(current_gen, selection_parameter, population_size) # Selection of the best individuals via elitism
 
         generation_index += 1
 
