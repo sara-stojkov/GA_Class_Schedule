@@ -269,7 +269,7 @@ class Schedule:
             "<html>",
             "<head>",
             "<meta charset='UTF-8'>",
-            "<title>Raspored časova</title>",
+            "<title>Schedule</title>",
             "<style>",
             "table { border-collapse: collapse; margin: 20px; }",
             "th, td { border: 1px solid black; padding: 5px; text-align: center; }",
@@ -284,13 +284,13 @@ class Schedule:
 
         # For each day, creates a table
         for day in range(days_per_week):
-            html.append(f"<h2>{days[day]}</h2>")
+            html.append(f"<h2>Day {day + 1}</h2>")
             html.append("<table>")
             
             # Table header: time slot | room 1 | room 2 | ...
-            header = "<tr><th>Vreme</th>"
+            header = "<tr><th>Time</th>"
             for room in range(num_rooms):
-                header += f"<th>Učionica {rooms[room]}</th>"
+                header += f"<th>Room {room + 1}</th>"
             header += "</tr>"
             html.append(header)
 
@@ -334,7 +334,6 @@ class Schedule:
                 return False
         
         print("\n YAYYYYYY NO OVERLAP, VALID SCHEDULE!!!! \n   >>>>>>>>>>>>>>>")
-        return True
         return True
 
 def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: float):
