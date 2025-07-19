@@ -32,7 +32,7 @@ The crossover function is implemented like a three-way crossover. Two points are
   
 4. Mutations
 
-After new individuals are created in crossover, they are subject to mutations. There is a parameter ```MUTATION_CHANCE``` that determines how likely the mutations are to happen. In this implementation, there is variable chance to mutate - in the first half of generations, mutations are more likely to happen since they increase diversity. Mutations are also random, since they may shuffle from 1/15 classes to 1/4 of the general number of classes in a Schedule. A class is replaced by chosing a new random spot and removing the class from the old index.
+After new individuals are created in crossover, they are subject to mutations. There is a parameter ```MUTATION_CHANCE``` that determines how likely the mutations are to happen. In this implementation, there is variable chance to mutate - in the first half of generations, mutations are more likely to happen since they increase diversity. Mutations are also random, since they may shuffle from 1/16 classes to 1/4 of the general number of classes in a Schedule. A class is replaced by chosing a new random spot and removing the class from the old index.
 
 5. Selection
 
