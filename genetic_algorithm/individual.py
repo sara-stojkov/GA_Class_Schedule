@@ -17,12 +17,16 @@ class Schedule:
     """
     __slots__ = ('class_list', 'mapping', 'fitness_score', 'num_blocks', 'block_size')
     def __init__(self, class_count: int, room_count: int):
-        # Initialize the schedule where the time slots are represented as a list of lists.
-        # Each sublist corresponds to a time slot (12 hours * 4 quarters * 5 days * room_count).
+        """
+        Initializes a Schedule object with the given number of classes and rooms. The time slots are represented as a list of lists,
+        where each sublist corresponds to a time slot (12 hours * 4 quarters * 5 days * room_count).
+        Besides the list, each Schedule has a mapping.
+        The mapping is a dictionary where the key is the class index and the value is -1 (indicating no class scheduled).
+        The mapping will be updated when classes are added to the schedule.
+        :param class_count: The number of classes in the schedule.
+        :param room_count: The number of rooms in the schedule."""
+        
         self.class_list = [[] for _ in range(12 * 4 * 5 * room_count)]
-        # Initialize the mapping of classes to their indices.
-        # The mapping is a dictionary where the key is the class index and the value is -1 (indicating no class scheduled).
-        # The mapping will be updated when classes are added to the schedule.
         self.mapping = {i: -1 for i in range(class_count)}
         self.fitness_score = -1
         self.num_blocks = 5 * room_count  # We have 5 work days and n rooms, so each combination of these is one block
@@ -44,193 +48,174 @@ class Schedule:
         """Sets the fitness score of the schedule."""
         self.fitness_score = score
 
-    def set_random_classes(self, room_number: int, classes: list[Subject]):
+    def set_random_classes(self, class_number: int, classes: list[Subject]):
         """
         Used for randomizing an individual Schedule, used in creating the first generation.
         Iterates through all the classes and assignes them to a random timeslot (15 minutes) and classroom, according to Schedule structure. 
-        Adding a class to the schedule is done by appending it to the class_list and updating the mapping.
+        Adding a class to the schedule is done by appending it to the class_list and updating the mapping
+        and checking for overlaps, if any occur the class will be placed in a different slot.
+
+        :param class_number: The number of classes to be scheduled.
+        :param room_number: The number of rooms available for scheduling.
+        :param classes: The list of classes to be scheduled.
         """
-
-        class_number = len(classes)
-        for i in range(class_number): # iterating through the indexes of all classes
-            block_id = randint(0, self.num_blocks - 1) # first pick out a block
-            block_start = block_id * self.block_size
-            block_end = block_start + self.block_size - classes[i].duration
-
-            random_class_index = randint(block_start, block_end)
+        for i in range(class_number):
+            # For each class, we try to place it in a random time slot
+            # We will try to place it in a random time slot, if it overlaps with another class, we will try again
+            placed = False
+            tries = 0
+            while not placed and tries < 100:
+                # Pick a random block (day and room) and place a random class in it
+                block_id = randint(0, self.num_blocks - 1)
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - classes[i].duration
+                random_class_index = randint(block_start, block_end)
+               # Check for overlap
+                overlap = False
+                for j in range(classes[i].duration):
+                    if self.class_list[random_class_index + j]:
+                        overlap = True
+                        break
+                if not overlap:
+                    placed = True
+                tries += 1
+            if not placed:
+                block_id = randint(0, self.num_blocks - 1)   # first pick out a block
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - classes[i].duration
+                random_class_index = randint(block_start, block_end)
 
             for j in range(classes[i].duration):
-                    self.class_list[random_class_index + j].append(i) 
-            self.mapping[i] = random_class_index 
+                self.class_list[random_class_index + j].append(i) 
+            self.mapping[i] = random_class_index
 
-        self.fitness(classes)
+        self.calculate_fitness(classes)
 
 
-    def fitness(self, all_class: list[Subject]) -> None:
+    def calculate_fitness(self, all_class: list[Subject]) -> None:
         """
         Calculates the fitness score of a schedule.
         The fitness score is a measure of how well the schedule meets the requirements.
         There will be two main criteria for the fitness evaluation and the final score will be their multiplication:
         First:
-            If a class is scheduled at a time slot that is already occupied, it will not get a point.
-            if at the end of a class there is no time for the next class, it will not get a point.
-            if before a class there is no time for the previous class, it will not get a point.
-            The max score of a class is 3 points, the minimum is 0 points.
-            The score of the first part is the sum of the scores of all classes divided 
-            by the count of classes * by max point (the class can get).
-
+        - Schedule Validity: Checks if the classes are scheduled in valid time slots, without overlaps.
+          If a class is scheduled in an invalid slot, it will be penalized.
         Second:
-            We record for each classroom and for each day the time elapsed from 7:00 a.m. to the beginning of the first
-            lectures. If we have n classrooms and m working days, there will be n m of these values
-            these values ​​with pi, where i takes integer values ​​from 1 to n m
-            time elapsed from the end of the last lecture to 19:00 for each day and for each classroom. This one
-            we mark times with ki. We form the optimality criterion in the following way:
-            The sum of pi * ki for all i from 1 to n*m is the second part of the fitness score.
+        - Schedule Spread: Checks if the classes are spread evenly throughout the day.
+          The score is calculated based on the time slots used and the spread of classes.
 
-        The final fitness score is the product of the two parts.
-        :param all_class: The list of classes.
+        :param all_class: The list of classes to calculate the fitness score for.
         """
 
-        first_score_total = 0
-        max_points = 6  # max per class: 1+1+2
-        total_classes = len(self.mapping)
+        penalty= 1
 
         # First Part: Schedule Validity
         for class_index, start_slot in self.mapping.items():
             duration = all_class[class_index].get_duration()
-            points = 0
+            
 
             # Check before
             if start_slot == 0 or not self.class_list[start_slot - 1]:
-                points += 2
+                continue
+            else:
+                penalty +=5
 
             # Check after
             if start_slot + duration >= len(self.class_list) or not self.class_list[start_slot + duration]:
-                points += 2
+                continue
+            else:
+                penalty += 5
 
             # Check slot overlap
-            overlap_penalty = 0
+            
             for i in range(start_slot, start_slot + duration):
                 if len(self.class_list[i]) > 1:
-                    overlap_penalty += 1
+                    penalty += 1000
 
-            if overlap_penalty == 0:
-                points += 2  # clean
-            elif overlap_penalty == 1:
-                points += 0  # mild penalty
-            else:
-                points -= 1  # strong penalty
-
-            first_score_total += points
-
-        first_part_score = first_score_total / (total_classes * max_points)
 
         # Second Part: Schedule Spread (Late Starts + Early Finishes)
-        second_score_total = 0
+        total_score = 0
         slots_per_day = 12 * 4  # 12 hours * 4 = 48 slots/day
-        days = len(self.class_list) // slots_per_day
 
         for day_start in range(0, len(self.class_list), slots_per_day):
             slots = self.class_list[day_start: day_start + slots_per_day]
+            p1=1
 
-            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day // 10)
-            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day // 10)
-            suffix = slots_per_day - suffix - 1  # Convert index from end
+            prefix = next((i for i, s in enumerate(slots) if s), slots_per_day)
+            suffix = next((i for i, s in enumerate(reversed(slots)) if s), slots_per_day)
+            
+            # If the prefix or suffix is equal to slots_per_day, it means that there are no classes scheduled in that day
+            if prefix == slots_per_day or suffix == slots_per_day:
+                p1 = 0
 
-            if prefix == slots_per_day // 10 and suffix == slots_per_day // 10:
-                # Empty day – prevent artificially high score
-                prefix = suffix = slots_per_day // 10
+            total_score += (prefix * 15) * ((suffix) * 15) * p1  # Convert slots to minutes
 
-            second_score_total += (prefix * 15) * ((slots_per_day - 1 - suffix) * 15)
-
-        # Normalize second part (optional but improves stability)
-        max_time = (15 * slots_per_day) ** 2
-        second_part_score = second_score_total / (max_time * days / 4)
-
-        # Final score: product or weighted sum
-        fitness_score = first_part_score * 0.6 + 0.4 * second_part_score
-        # Or try weighted sum: 0.7 * first_part_score + 0.3 * second_part_score
+        fitness_score = total_score/ penalty
 
         self.set_fitness_score(fitness_score)
     
-    def mutate(self, mutation_chance: int, all_classes: list[Subject]):
-        """Function that handles the mutation of an individual.
-           Based on a predefined mutation_chance, the function determines whether a mutation will happen.
-           A mutation is defined as picking a random number n of classes (from 1 to a quarter of population size),
-           then placing each of those n classes in a randomly picked timeslot. 
-           By doing so, variability is increased and this is also a try to escape uniformness.
+    
+    def mutate(self, mutation_chance: float, all_classes: list[Subject]):
+        """Funtion that handles the mutation of an individual.
+        It randomly selects a class and tries to move it to a different time slot,
+        in the same block (same day and room), if possible.
+
+        :param mutation_chance: The chance of mutation happening, a number between 0 and 1.
+        :param all_clases: The list of classes to be scheduled.
            """
-        if random() > mutation_chance:
-            self.fitness(all_classes)
+        
+        mutation_happens = random()
+        # The principle is the following: We generate a random number between 0 and 1. Then we compare that number to the parameter
+        # mutation_chance - if the random number is smaller than mutation chance then we mutate the individual. Otherwise, we exit this function,
+        # which is what is implemented below
+        if mutation_happens > mutation_chance:
+            self.calculate_fitness(all_classes)  # If we do not mutate, we still need to calculate the fitness score
             return
 
-        num_classes = len(all_classes)
+        class_num = randint(len(all_classes)//16, len(all_classes)//4)
+        # Will mutate {class_num} classes randomly, from 1/16 to 1/4 of all classes so it also randomizes the mutation weight
+        for _ in range(class_num):
+            class_index = randint(0, len(self.mapping) - 1) # We pick a class out of all classes that are in this Schedule
 
-        # pick random number of classes to mutate: sometimes 1, sometimes up to 33% of classes
-        n_mutate = randint(1, max(1, num_classes // 3))
+            old_position = self.mapping[class_index]
+            block= old_position // self.block_size
 
-        for _ in range(n_mutate):
-            mutation_type = random()
+            duration = all_classes[class_index].duration
 
-            if mutation_type < 0.5:
-                # relocate a random class
-                class_index = randint(0, num_classes - 1)
-                old_pos = self.mapping[class_index]
-                duration = all_classes[class_index].duration
+            # Remove the class from the old position
+            for i in range(old_position, old_position + duration):
+                if class_index in self.class_list[i]:
+                    self.class_list[i].remove(class_index)
 
-                # remove it from current location
-                for i in range(old_pos, old_pos + duration):
-                    if class_index in self.class_list[i]:
-                        self.class_list[i].remove(class_index)
+            placed = False
+            tries = 0
 
-                # pick a *nearby* block to encourage local exploration
-                current_block = old_pos // self.block_size
-                block_id = current_block + randint(-1, 1)
-                block_id = max(0, min(block_id, self.num_blocks - 1))
-
+            while not placed and tries < 100:
+                block_id = block  
                 block_start = block_id * self.block_size
                 block_end = block_start + self.block_size - duration
+                new_position = randint(block_start, block_end)
+               # Check for overlap
+                overlap = False
+                for j in range(duration):
+                    if self.class_list[new_position + j]:
+                        overlap = True
+                        break
+                if not overlap:
+                    placed = True
+                tries += 1
+            if not placed:
+                block_id = randint(0, self.num_blocks - 1)   # first pick out a block
+                block_start = block_id * self.block_size
+                block_end = block_start + self.block_size - duration
+                new_position = randint(block_start, block_end)
 
-                new_pos = randint(block_start, block_end)
+            for j in range(duration):
+                self.class_list[new_position + j].append(class_index)
+            self.mapping[class_index] = new_position
 
-                for i in range(new_pos, new_pos + duration):
-                    self.class_list[i].append(class_index)
-                self.mapping[class_index] = new_pos
+        self.calculate_fitness(all_classes)
 
-            else:
-                # swap two classes
-                p = randint(0, num_classes - 1)
-                q = randint(0, num_classes - 1)
-                if p == q:
-                    continue
-                pos_p = self.mapping[p]
-                pos_q = self.mapping[q]
-                dur_p = all_classes[p].duration
-                dur_q = all_classes[q].duration
-
-                # check if swap would exceed schedule bounds
-                if (pos_q + dur_p > len(self.class_list)) or (pos_p + dur_q > len(self.class_list)):
-                    continue  # swap is impossible
-
-                # remove both from current spots
-                for i in range(pos_p, pos_p + dur_p):
-                    if p in self.class_list[i]:
-                        self.class_list[i].remove(p)
-                for i in range(pos_q, pos_q + dur_q):
-                    if q in self.class_list[i]:
-                        self.class_list[i].remove(q)
-
-                # place p at q's slot
-                for i in range(pos_q, pos_q + dur_p):
-                    self.class_list[i].append(p)
-                self.mapping[p] = pos_q
-
-                # place q at p's slot
-                for i in range(pos_p, pos_p + dur_q):
-                    self.class_list[i].append(q)
-                self.mapping[q] = pos_p
-
-        self.fitness(all_classes)
 
     def __repr__(self):
         return f"Schedule(class_list={self.class_list}, mapping={self.mapping}, fitness_score={self.fitness_score})"
@@ -238,8 +223,10 @@ class Schedule:
     def __str__(self):
         return f"Schedule: {self.class_list}, {self.mapping}, {self.fitness_score}"
     
+    # function was used for debugging and visualization purposes before implementing the HTML output
     def nice_print(self):
-        """Prints out a Schedule timeslot by timeslot, to make debugging easier."""
+        """Prints the schedule in a nice format in console, showing the classes scheduled in each time slot.
+        Used for debugging and visualization purposes."""
         print("\n-------------------------------")
         print("SCHEDULE BY DAYS AND ROOMS:\n")
 
@@ -248,7 +235,6 @@ class Schedule:
         days_per_week = 5
 
         slots_per_day_per_room = hours_per_day * slots_per_hour  # 48
-        slots_per_day_all_rooms = slots_per_day_per_room * (len(self.class_list) // (slots_per_day_per_room * days_per_week))
         num_rooms = len(self.class_list) // (slots_per_day_per_room * days_per_week)
 
         for day in range(days_per_week):
@@ -262,8 +248,8 @@ class Schedule:
                 print("  -------------------------")
             print("*****************************")
 
-
-    def write_schedule_to_html(self, classes: list[Subject], rooms, days, filename: str, population_size:int , mutation_chance:int, max_gen: int):
+    # adding constant of days numbers and room names would have been an easy update, but the print is in English
+    def write_schedule_to_html(self, classes: list[Subject], filename: str, generation: int = 0, mutation: list[float] = [0.5, 0.3, 0.2], keepPercent: float = 0.2):
         """
         Write the schedule to an HTML file in a clear table format:
         - Each day has a separate table.
@@ -275,6 +261,7 @@ class Schedule:
         hours_per_day = 12
         slots_per_day_per_room = slots_per_hour * hours_per_day  # 48
         days_per_week = 5
+        # Calculate the number of rooms based on the class_list length
         num_rooms = len(self.class_list) // (slots_per_day_per_room * days_per_week)
 
         html = [
@@ -282,7 +269,7 @@ class Schedule:
             "<html>",
             "<head>",
             "<meta charset='UTF-8'>",
-            "<title>Raspored časova</title>",
+            "<title>Schedule</title>",
             "<style>",
             "table { border-collapse: collapse; margin: 20px; }",
             "th, td { border: 1px solid black; padding: 5px; text-align: center; }",
@@ -290,19 +277,20 @@ class Schedule:
             "</style>",
             "</head>",
             "<body>",
-            f"<h1>Raspored za SIIT (Fitness Score: {self.get_fitness_score():.2f})</h1>",
-            f"<h2>Veličina populacije: {population_size}, broj generacija: {max_gen}, šansa za mutacije: {mutation_chance} </h2>"
+            f"<h1>Schedule (Fitness Score: {self.get_fitness_score():.2f})</h1>",
+            f"<p>Generation: {generation}, Mutation: {mutation}, Keep Percent: {keepPercent}</p>"
+
         ]
 
-        # For each day, create a table
+        # For each day, creates a table
         for day in range(days_per_week):
-            html.append(f"<h2>{days[day]}</h2>")
+            html.append(f"<h2>Day {day + 1}</h2>")
             html.append("<table>")
             
             # Table header: time slot | room 1 | room 2 | ...
-            header = "<tr><th>Vreme</th>"
+            header = "<tr><th>Time</th>"
             for room in range(num_rooms):
-                header += f"<th>Učionica {rooms[room]}</th>"
+                header += f"<th>Room {room + 1}</th>"
             header += "</tr>"
             html.append(header)
 
@@ -337,21 +325,26 @@ class Schedule:
 
 
     def no_overlap(self):
-        """Checks whether a Schedule has overlapping classes, therefore checks if it is valid.
-        The logic is simple, the function checks the length of each timeslot."""
+        """Check if the schedule has no overlaps and print a message accordingly."""
 
         for list in self.class_list:
+            # Each list should contain at most one class index, if it contains more than one, there is an overlap
             if len(list) > 1:
-                # print("OVERLAP!!!!!!!! NOT GOOD!!!!")
+                print("OVERLAP!!!!!!!! NOT GOOD!!!!")
                 return False
         
         print("\n YAYYYYYY NO OVERLAP, VALID SCHEDULE!!!! \n   >>>>>>>>>>>>>>>")
         return True
 
-
-def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: int) -> tuple[Schedule, Schedule]:
+def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], mutations: float):
     """
-    Performs two-point crossover between two parents to produce two children.
+    Performs crossover between two schedules using three-point crossover.
+    If preferred parent's position is invalid, FORCE the fallback parent's position.
+
+    :param parent1: The first parent Schedule.
+    :param parent2: The second parent Schedule.
+    :param class_list: The list of classes to be scheduled.
+    :param mutations: The mutation chance for the children schedules.
     """
     class_count = len(parent1.mapping)
     room_count = len(parent1.class_list) // (12 * 4 * 5)
@@ -362,45 +355,45 @@ def cross_over(parent1: Schedule, parent2: Schedule, class_list: list[Subject], 
     k1 = randint(0, class_count // 2)
     k2 = randint(class_count // 2, class_count - 1)
 
-    # Child 1
-    for i in range(k1):
-        value = parent1.mapping.get(i, -1)
-        child1.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child1.class_list[value + j].append(i)
-    for i in range(k1, k2):
-        value = parent2.mapping.get(i, -1)
-        child1.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child1.class_list[value + j].append(i)
-    for i in range(k2, class_count):
-        value = parent1.mapping.get(i, -1)
-        child1.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child1.class_list[value + j].append(i)
+    def place_class(child, class_idx, preferred_parent, fallback_parent):
+        """Try preferred parent first, if invalid FORCE fallback parent"""
+        duration = class_list[class_idx].get_duration()
+        
+        # Try preferred parent
+        value = preferred_parent.mapping.get(class_idx, -1)
+        if value != -1:
+            # Check if slots are free (no overlap)
+            if all(not child.class_list[value + j] for j in range(duration) if value + j < len(child.class_list)):
+                child.mapping[class_idx] = value
+                for j in range(duration):
+                    child.class_list[value + j].append(class_idx)
+                return
+        
+        # If preferred failed, FORCE fallback parent (no matter what)
+        value = fallback_parent.mapping.get(class_idx, -1)
+        if value != -1:
+            child.mapping[class_idx] = value
+            for j in range(duration):
+                child.class_list[value + j].append(class_idx)
+        else:
+            # If both parents don't have this class, leave unplaced
+            child.mapping[class_idx] = -1
 
-    # Child 2
+    # Child 1: parent1 -> parent2 -> parent1
     for i in range(k1):
-        value = parent2.mapping.get(i, -1)
-        child2.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child2.class_list[value + j].append(i)
+        place_class(child1, i, parent1, parent2)
     for i in range(k1, k2):
-        value = parent1.mapping.get(i, -1)
-        child2.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child2.class_list[value + j].append(i)
+        place_class(child1, i, parent2, parent1)
     for i in range(k2, class_count):
-        value = parent2.mapping.get(i, -1)
-        child2.mapping[i] = value
-        duration = class_list[i].get_duration()
-        for j in range(duration):
-            child2.class_list[value + j].append(i)
+        place_class(child1, i, parent1, parent2)
+
+    # Child 2: parent2 -> parent1 -> parent2
+    for i in range(k1):
+        place_class(child2, i, parent2, parent1)
+    for i in range(k1, k2):
+        place_class(child2, i, parent1, parent2)
+    for i in range(k2, class_count):
+        place_class(child2, i, parent2, parent1)
 
     # mutate both children
     child1.mutate(mutations, class_list)
