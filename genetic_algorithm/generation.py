@@ -80,7 +80,7 @@ def crossover_all(generation: list[Schedule], population_size: int, mutation_cha
     return generation
      
 
-def life_cycle(max_generations, best_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance,rooms):
+def life_cycle(max_generations, optimal_fitness, stopping_criteria, classes, population_size, selection_parameter, mutation_chance,rooms, output_file):
     """This is the main function that will do the genetic algorithm on populations, where the algorithm consists of:
         0. Generating the first population (Gen. 1)
         Then, we loop through the following 4 steps until one of the stopping criteria is fulfilled 
@@ -91,7 +91,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
             3. Recalculating fitness upon the population
         
     :param max_generations: The maximum number of generations to run the algorithm for.
-    :param best_fitness: The fitness score of the best Schedule found so far.
+    :param optimal_fitness: The fitness score of the "ideal" Schedule which has not yet been reached with the algorithm.
     :param stopping_criteria: The minimum difference between the best fitness and the current maximum fitness
     :param classes: List of Subject objects representing the classes to be scheduled.
     :param population_size: The total number of Schedules in the population.
@@ -107,7 +107,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     max_fitness = 0
 
     # The main loop of the genetic algorithm
-    while not (generation_index == max_generations or (best_fitness - max_fitness) < stopping_criteria):
+    while not (generation_index == max_generations or (optimal_fitness - max_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
         max_fitness = current_gen[0].get_fitness_score()
         # Has variant mutation chance based on generation number
@@ -129,7 +129,7 @@ def life_cycle(max_generations, best_fitness, stopping_criteria, classes, popula
     # Check if the best schedule has no overlaps
     current_gen[0].no_overlap()
 
-    current_gen[0].write_schedule_to_html(classes, "schedules/probni4.html", generation=generation_index, mutation=mutation_chance, keepPercent=selection_parameter)
+    current_gen[0].write_schedule_to_html(classes, output_file, generation=generation_index, mutation=mutation_chance, keepPercent=selection_parameter)
     return current_gen[0]  # The best schedule
 
 
