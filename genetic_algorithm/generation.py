@@ -75,8 +75,8 @@ def crossover_all(generation: list[Schedule], population_size: int, mutation_cha
         parent1, parent2 = roulette_parent_selection(generation=generation)
         child1, child2 = cross_over(parent1=generation[parent1], parent2=generation[parent2], class_list=classes, mutations = mutation_chance)
 
-        generation.append(child1)
-        generation.append(child2)
+        child_gen.append(child1)
+        child_gen.append(child2)
 
     return generation
      
@@ -87,8 +87,8 @@ def life_cycle(max_generations, optimal_fitness, stopping_criteria, classes, pop
         Then, we loop through the following 4 steps until one of the stopping criteria is fulfilled 
         * Loop stop criteria - reached max number of generations or the best Schedule is within an acceptable distance from an optimal one.
         The main loop consists of:
-            1. Selection
-            2. Crossover (breeding) including possible mutations on children genomes
+            1. Crossover (breeding) including possible mutations on children genomes
+            2. Selection of best Schedules from the parent generation and the new children
             3. Recalculating fitness upon the population
         
     :param max_generations: The maximum number of generations to run the algorithm for.
@@ -104,12 +104,16 @@ def life_cycle(max_generations, optimal_fitness, stopping_criteria, classes, pop
     """
     # The 0 step - generating the first generation with random individuals
     current_gen = generate_first_gen(classes, population_size,len(rooms))
+    current_gen.sort(reverse=True, key=lambda Schedule: Schedule.get_fitness_score())
     generation_index = 1
-    max_fitness = 0
+    max_fitness = current_gen[0].get_fitness_score()
 
     # The main loop of the genetic algorithm
     while not (generation_index == max_generations or (optimal_fitness - max_fitness) < stopping_criteria):
         print_generation(current_gen, generation_index)
+        new_gen = crossover_all(current_gen, population_size, mutation_chance, classes) # Crossover includes mutations of children
+        current_gen = selection(current_gen, new_gen, selection_parameter, population_size)
+
         max_fitness = current_gen[0].get_fitness_score()
         # Variant mutation chance based on generation number
         if generation_index< max_generations/2:
