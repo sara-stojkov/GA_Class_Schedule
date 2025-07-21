@@ -2,46 +2,44 @@
 
 ## Authors: Sara Stojkov & Marko Milutin
 
-## Overview
-
+## The task
 Implementing a genetic algorithm in Python to create a timetable for university lectures and exercises. Each event must be assigned a day, time, and classroom, following these constraints:
 
 - A minimum 15-minute break between events in the same classroom
 
 - Classes run only from 7:00 AM to 7:00 PM, Monday to Friday
 
-The goal is to **maximize the product of the average idle times before the first and after the last event for each classroom and day**. Input data is provided in _data_timetable.txt_. 
+The goal is to maximize the product of the average idle times before the first and after the last event for each classroom and day. Input data is provided in _data_timetable.txt_. No GUI is provided, all debugging happens in the terminal.
 
-No GUI is implemented but the final schedule is saved as a HTML file which containts the Schedule day by day and room by room. 
-
-Also, the documentation of the project is in the _docs_ folder describing the program structure, problem constraints, mutation and crossover operators, selection strategy, parameter choices, and algorithm results.
+The project contains its documentation in the ```docs``` folder. It describes the program structure, problem constraints, mutation and crossover operators, selection strategy, parameter choices, and algorithm results.
 
 ## Implementation
 
-1. An individual
+1. The Population
 
-An individual in our genetic algorithm is actually a Schedule - a possible solution. A schedule is realised my making a matrix (list of lists), where the small list is actually a timeslot in a specific classroom and on a specific weekday. This implementation also includes a dictionary named mapping which has the starting index of each class to avoid unneccessary for loops and iterating through all timeslots.
-A population is just a list of Schedules (a group of individuals).
+An individual is a potential solution to a problem - in this case a Schedule. Here, a Schedule is implemented as a list where a list element is actually a timeslot of 15 minutes on a specific workday in a specific classroom. A population is implemented as just a list of individuals (Schedules). Creating the first generation is done by adding classes to random slots in a Schedule's _class_list_, while taking into account that a class should be within 1 block - 1 block is a combination of a day and a classroom.
 
-2. Fitness Function
+2. Fitness function
+   
+Fitness is calculated in two steps: the first step is a check if a schedule is valid - a valid schedule cannot have overlaps and it also has to have 15 minute breaks (1 timeslot) between activities in the same classroom. The second part of the fitness function checks how early the classes start and how late they end - the function we want to maximize. 
 
-Fitness is calculated as ```points / penalty``` where points are earned when a Schedule follows the desirable traits - like if it has pauses between classes and starts later than 7 AM. Penalties are earned if a Schedule has overlapping classes or has no 15 minute pauses between classes.  
+3. Crossovers
 
-3. Mutations
+The selection of parents is implemented as a roulette selection - individuals are ranked by their fitness scores. A list with random numbers between 0 and 1 is generated and then the final score is a product of their fitness rank and the random number with their index from the second list. The individuals are sorted by those final scores and two with the biggest scores are selected to be the parents. 
 
-Mutations randomize a variable number of classes within 1 block. A block is a combination of a classroom and a day - our logic does not allow a class spanning over blocks (like in real life).
+The crossover function is implemented like a three-way crossover. Two points are chosen and the children are a combination of three segments that those two points make in the parents. 
 
-4. Crossovers
+  
+4. Mutations
 
-Parents are chosen with roulette selection to prioritize better individuals but still allow for some randomness. A crossover is done using 3-way inheritance. 2 random spots (indexes in the parents' class lists) are chosen so they split each parents classes into 3 segments. The children are made by combining those segments like 1-2-1 and 2-1-2. In case of overlap, there is a chance a child may be more similar to a parent.
+After new individuals are created in crossover, they are subject to mutations. There is a parameter ```MUTATION_CHANCE``` that determines how likely the mutations are to happen. In this implementation, there is variable chance to mutate - in the first half of generations, mutations are more likely to happen since they increase diversity. Mutations are also random, since they may shuffle from 1/16 classes to 1/4 of the general number of classes in a Schedule. A class is replaced by chosing a new random spot and removing the class from the old index.
 
 5. Selection
 
-Elitism is used to allow only select few old individuals to move on to the next generation, while the rest of population is filled with children Schedules.
+THe choice of which individuals survive and build the next generation is done by using elitism. A parameter ```KEEP_PERCENT``` is defined to state how much of the parent generation is kept. Only the individuals with best fitness scores survive to next generations. The rest of the population is filled with children Schedules with thw best scores. This is done to avoid local minimums and stagnation.
 
-## Results and final schedule
+## Results and an example schedule
 
 The results of the algortihm are explained in detail in the documentation, but here is and example of how a part of one workday looks:
 
 <img width="1900" height="768" alt="image" src="https://github.com/user-attachments/assets/6a9b0009-4cd4-4d6c-aa6d-43d312d15844" />
-
